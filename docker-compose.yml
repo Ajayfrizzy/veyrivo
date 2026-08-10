@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: proofpay
+      POSTGRES_USER: proofpay
+      POSTGRES_PASSWORD: proofpay_local
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proofpay -d proofpay"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - proofpay_postgres:/var/lib/postgresql/data
+
+volumes:
+  proofpay_postgres:

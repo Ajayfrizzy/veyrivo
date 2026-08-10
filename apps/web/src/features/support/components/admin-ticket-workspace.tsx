@@ -1,0 +1,14 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { TicketConversation } from "./ticket-conversation";
+
+type Ticket = { status: string; priority: string; assignedTo?: string | null };
+type Agent = { id: string; email: string; displayName?: string };
+export function AdminTicketWorkspace({ ticketId }: { ticketId: string }) {
+  const [ticket, setTicket] = useState<Ticket | null>(null); const [agents, setAgents] = useState<Agent[]>([]); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
+  const load = useCallback(async () => { const [ticketResponse, agentsResponse] = await Promise.all([fetch(`/api/admin/support/tickets/${ticketId}`), fetch("/api/admin/support/agents")]); const ticketBody = await ticketResponse.json(); const agentsBody = await agentsResponse.json(); if (ticketResponse.ok) setTicket(ticketBody.data.ticket); else setError(ticketBody.error?.message ?? "Unable to load ticket controls."); if (agentsResponse.ok) setAgents(agentsBody.data); }, [ticketId]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
+  async function update(change: Partial<Ticket>) { setSaving(true); setError(""); const response = await fetch(`/api/admin/support/tickets/${ticketId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) }); const body = await response.json(); if (response.ok) setTicket(body.data); else setError(body.error?.message ?? "Unable to update this case."); setSaving(false); }
+  return <div className="admin-ticket-workspace">{ticket && <aside className="ticket-controls"><h2>Case controls</h2><label>Status<select value={ticket.status} disabled={saving} onChange={event => void update({ status: event.target.value })}><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option><option value="WAITING_FOR_USER">Waiting for user</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option></select></label><label>Priority<select value={ticket.priority} disabled={saving} onChange={event => void update({ priority: event.target.value })}><option value="LOW">Low</option><option value="NORMAL">Normal</option><option value="HIGH">High</option><option value="URGENT">Urgent</option></select></label><label>Assigned to<select value={ticket.assignedTo ?? ""} disabled={saving} onChange={event => void update({ assignedTo: event.target.value || null })}><option value="">Unassigned</option>{agents.map(agent => <option value={agent.id} key={agent.id}>{agent.displayName || agent.email}</option>)}</select></label>{error && <p className="form-feedback error">{error}</p>}</aside>}<div><TicketConversation ticketId={ticketId} admin /></div></div>;
+}

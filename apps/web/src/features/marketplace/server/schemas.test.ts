@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { listingInputSchema, listingQuerySchema, proposalInputSchema } from "./schemas";
+
+const listing = { title: "Build an analytics dashboard", description: "Create a responsive analytics dashboard with accessible charts and filters.", category: "DEVELOPMENT" as const, skills: ["React", "TypeScript", "react"], budgetMin: "100", budgetMax: "200", proposalDeadline: new Date(Date.now() + 86_400_000) };
+describe("marketplace schemas", () => {
+  it("normalizes and deduplicates skills", () => { expect(listingInputSchema.parse(listing).skills).toEqual(["react", "typescript"]); });
+  it("rejects an inverted budget", () => { expect(() => listingInputSchema.parse({ ...listing, budgetMin: "300" })).toThrow(); });
+  it("treats blank discovery filters as absent", () => {
+    expect(listingQuerySchema.parse({ query: "", category: "", skill: "", minBudget: "", maxBudget: "", deadlineBefore: "", cursor: "", limit: "" })).toEqual({ sort: "newest", limit: 12 });
+  });
+  it("accepts milestones whose total and duration match", () => { expect(proposalInputSchema.parse({ coverLetter: "I will deliver the complete dashboard with tested responsive and accessible states.", totalBid: "200", estimatedDurationDays: 14, milestones: [{ title: "Foundation", description: "Build the responsive component foundation.", amount: "80", evidenceRequirements: "Preview URL", deliveryDays: 7 }, { title: "Complete dashboard", description: "Finish charts, filters, testing, and handoff.", amount: "120", evidenceRequirements: "Test report", deliveryDays: 14 }] }).totalBid).toBe("200"); });
+  it("rejects mismatched totals and non-increasing delivery dates", () => { expect(() => proposalInputSchema.parse({ coverLetter: "I will deliver the complete dashboard with tested responsive and accessible states.", totalBid: "300", estimatedDurationDays: 7, milestones: [{ title: "Foundation", description: "Build the responsive component foundation.", amount: "200", evidenceRequirements: "Preview URL", deliveryDays: 7 }, { title: "Finish", description: "Finish charts and documentation thoroughly.", amount: "50", evidenceRequirements: "Test report", deliveryDays: 7 }] })).toThrow(); });
+});
