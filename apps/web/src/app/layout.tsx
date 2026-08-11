@@ -3,9 +3,9 @@ import "@/styles/globals.css";
 import { RouteTitle } from "@/components/layout/route-title";
 
 export const metadata: Metadata = {
-  title: { default: "ProofPay", template: "%s | ProofPay" },
+  title: { default: "Veyrivo", template: "%s | Veyrivo" },
   description: "Protected milestone payments on Nervos CKB",
-  applicationName: "ProofPay",
+  applicationName: "Veyrivo",
 };
 
 export const viewport: Viewport = {
@@ -17,7 +17,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><RouteTitle />{children}</body>
+      <body>
+        <RouteTitle />
+        {children}
+      </body>
     </html>
   );
 }

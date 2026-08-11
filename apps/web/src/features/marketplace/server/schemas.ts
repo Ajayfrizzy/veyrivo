@@ -1,9 +1,12 @@
-import { JOB_CATEGORIES } from "@proofpay/domain";
+import { JOB_CATEGORIES } from "@veyrivo/domain";
 import { z } from "zod";
 
 const amount = z.string().regex(/^[1-9][0-9]*$/, "Use a positive integer smallest-unit amount");
-const skills = z.array(z.string().trim().min(2).max(40)).max(10).transform(items => [...new Set(items.map(item => item.toLowerCase()))]);
-const blankToUndefined = (value: unknown) => value === "" ? undefined : value;
+const skills = z
+  .array(z.string().trim().min(2).max(40))
+  .max(10)
+  .transform((items) => [...new Set(items.map((item) => item.toLowerCase()))]);
+const blankToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
 const listingFieldsSchema = z.object({
   title: z.string().trim().min(5).max(90),
@@ -14,9 +17,24 @@ const listingFieldsSchema = z.object({
   budgetMax: amount,
   proposalDeadline: z.coerce.date(),
 });
-export const listingInputSchema = listingFieldsSchema.refine(value => BigInt(value.budgetMax) >= BigInt(value.budgetMin), { path: ["budgetMax"], message: "Maximum budget must be at least the minimum." });
+export const listingInputSchema = listingFieldsSchema.refine(
+  (value) => BigInt(value.budgetMax) >= BigInt(value.budgetMin),
+  {
+    path: ["budgetMax"],
+    message: "Maximum budget must be at least the minimum.",
+  },
+);
 
-export const listingUpdateSchema = listingFieldsSchema.partial().refine(value => !value.budgetMin || !value.budgetMax || BigInt(value.budgetMax) >= BigInt(value.budgetMin), { path: ["budgetMax"], message: "Maximum budget must be at least the minimum." });
+export const listingUpdateSchema = listingFieldsSchema
+  .partial()
+  .refine(
+    (value) =>
+      !value.budgetMin || !value.budgetMax || BigInt(value.budgetMax) >= BigInt(value.budgetMin),
+    {
+      path: ["budgetMax"],
+      message: "Maximum budget must be at least the minimum.",
+    },
+  );
 export const listingQuerySchema = z.object({
   query: z.preprocess(blankToUndefined, z.string().trim().max(100).optional()),
   category: z.preprocess(blankToUndefined, z.enum(JOB_CATEGORIES).optional()),
@@ -30,14 +48,43 @@ export const listingQuerySchema = z.object({
 });
 
 export const proposalMilestoneSchema = z.object({
-  title: z.string().trim().min(2).max(120), description: z.string().trim().min(10).max(3000),
-  amount, evidenceRequirements: z.string().trim().min(5).max(1000), deliveryDays: z.number().int().min(1).max(365),
+  title: z.string().trim().min(2).max(120),
+  description: z.string().trim().min(10).max(3000),
+  amount,
+  evidenceRequirements: z.string().trim().min(5).max(1000),
+  deliveryDays: z.number().int().min(1).max(365),
 });
-export const proposalInputSchema = z.object({
-  coverLetter: z.string().trim().min(40).max(5000), totalBid: amount,
-  estimatedDurationDays: z.number().int().min(1).max(365), milestones: z.array(proposalMilestoneSchema).min(1).max(10),
-}).superRefine((value, context) => {
-  if (value.milestones.reduce((sum, item) => sum + BigInt(item.amount), 0n) !== BigInt(value.totalBid)) context.addIssue({ code: "custom", path: ["totalBid"], message: "Total bid must equal the milestone total." });
-  if (value.milestones.some((item, index) => index > 0 && item.deliveryDays <= value.milestones[index - 1].deliveryDays)) context.addIssue({ code: "custom", path: ["milestones"], message: "Milestone delivery days must increase." });
-  if (value.milestones.at(-1)?.deliveryDays !== value.estimatedDurationDays) context.addIssue({ code: "custom", path: ["estimatedDurationDays"], message: "Duration must match the final milestone delivery day." });
-});
+export const proposalInputSchema = z
+  .object({
+    coverLetter: z.string().trim().min(40).max(5000),
+    totalBid: amount,
+    estimatedDurationDays: z.number().int().min(1).max(365),
+    milestones: z.array(proposalMilestoneSchema).min(1).max(10),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.milestones.reduce((sum, item) => sum + BigInt(item.amount), 0n) !==
+      BigInt(value.totalBid)
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["totalBid"],
+        message: "Total bid must equal the milestone total.",
+      });
+    if (
+      value.milestones.some(
+        (item, index) => index > 0 && item.deliveryDays <= value.milestones[index - 1].deliveryDays,
+      )
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["milestones"],
+        message: "Milestone delivery days must increase.",
+      });
+    if (value.milestones.at(-1)?.deliveryDays !== value.estimatedDurationDays)
+      context.addIssue({
+        code: "custom",
+        path: ["estimatedDurationDays"],
+        message: "Duration must match the final milestone delivery day.",
+      });
+  });

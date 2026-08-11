@@ -4,14 +4,14 @@ The `app` directory follows Next.js routing conventions. Route and page files sh
 
 ## Where code belongs
 
-| Code | Location |
-| --- | --- |
-| Next.js page, layout, or API entry point | `app/` |
-| Product-specific component, schema, service, or fixture | `features/<feature>/` |
-| Reusable application layout | `components/layout/` |
-| Reusable feature-independent UI | `components/ui/` |
-| Database, HTTP, file, and other shared server infrastructure | `server/` |
-| Global styling and design tokens | `styles/` |
+| Code                                                         | Location              |
+| ------------------------------------------------------------ | --------------------- |
+| Next.js page, layout, or API entry point                     | `app/`                |
+| Product-specific component, schema, service, or fixture      | `features/<feature>/` |
+| Reusable application layout                                  | `components/layout/`  |
+| Reusable feature-independent UI                              | `components/ui/`      |
+| Database, HTTP, file, and other shared server infrastructure | `server/`             |
+| Global styling and design tokens                             | `styles/`             |
 
 Feature modules may contain `components`, `server`, tests, schemas, and fixtures as needed. Avoid barrel files inside features unless they provide a deliberate public boundary; direct imports make ownership easier to trace.
 

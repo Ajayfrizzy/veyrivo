@@ -1,4 +1,4 @@
-import type { AgreementStatus, MilestoneStatus } from "@proofpay/domain";
+import type { AgreementStatus, MilestoneStatus } from "@veyrivo/domain";
 
 const labels: Partial<Record<AgreementStatus | MilestoneStatus, string>> = {
   FUNDED_AWAITING_ACCEPTANCE: "Awaiting acceptance",
@@ -7,18 +7,10 @@ const labels: Partial<Record<AgreementStatus | MilestoneStatus, string>> = {
   SECURITY_HOLD: "Security hold",
 };
 
-export function StatusBadge({
-  status,
-}: {
-  status: AgreementStatus | MilestoneStatus;
-}) {
+export function StatusBadge({ status }: { status: AgreementStatus | MilestoneStatus }) {
   const text =
     status === "UNDER_REVIEW"
       ? "Under review"
       : (labels[status] ?? status.toLowerCase().replaceAll("_", " "));
-  return (
-    <span className={`status-badge status-${status.toLowerCase()}`}>
-      {text}
-    </span>
-  );
+  return <span className={`status-badge status-${status.toLowerCase()}`}>{text}</span>;
 }

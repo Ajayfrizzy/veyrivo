@@ -1,8 +1,8 @@
-import type { JobSummary } from "@proofpay/domain";
+import type { JobSummary } from "@veyrivo/domain";
 
 export const jobs: JobSummary[] = [
   {
-    id: "PP-1048",
+    id: "VY-1048",
     title: "Checkout experience redesign",
     counterparty: "Northstar Labs",
     role: "WORKER",
@@ -16,7 +16,7 @@ export const jobs: JobSummary[] = [
     updatedAt: "18 min ago",
   },
   {
-    id: "PP-1046",
+    id: "VY-1046",
     title: "Brand launch photography",
     counterparty: "Mira Okafor",
     role: "CLIENT",
@@ -30,7 +30,7 @@ export const jobs: JobSummary[] = [
     updatedAt: "3 hours ago",
   },
   {
-    id: "PP-1039",
+    id: "VY-1039",
     title: "July content production",
     counterparty: "Kora Studio",
     role: "CLIENT",
@@ -46,39 +46,98 @@ export const jobs: JobSummary[] = [
 ];
 
 export const jobDetails = {
-  "PP-1048": {
+  "VY-1048": {
     summary: jobs[0],
-    description: "Redesign the mobile and desktop checkout journey, improve payment clarity, and deliver an implementation-ready Figma prototype.",
+    description:
+      "Redesign the mobile and desktop checkout journey, improve payment clarity, and deliver an implementation-ready Figma prototype.",
     createdAt: "08 July 2026",
     fundedAt: "09 July 2026",
     payoutAddress: "ckb1qyq...w7m2k9",
     milestones: [
-      { title: "User-flow audit", status: "RELEASED", amount: 46000, due: "12 Jul", evidence: "Audit report and annotated flow", note: "Released 13 July" },
-      { title: "High-fidelity checkout", status: "UNDER_REVIEW", amount: 92000, due: "23 Jul", evidence: "Figma prototype and design notes", note: "Proof submitted 18 minutes ago" },
-      { title: "Developer handoff", status: "PENDING", amount: 46000, due: "30 Jul", evidence: "Component specs and exported assets", note: "Starts after milestone 2" },
+      {
+        title: "User-flow audit",
+        status: "RELEASED",
+        amount: 46000,
+        due: "12 Jul",
+        evidence: "Audit report and annotated flow",
+        note: "Released 13 July",
+      },
+      {
+        title: "High-fidelity checkout",
+        status: "UNDER_REVIEW",
+        amount: 92000,
+        due: "23 Jul",
+        evidence: "Figma prototype and design notes",
+        note: "Proof submitted 18 minutes ago",
+      },
+      {
+        title: "Developer handoff",
+        status: "PENDING",
+        amount: 46000,
+        due: "30 Jul",
+        evidence: "Component specs and exported assets",
+        note: "Starts after milestone 2",
+      },
     ],
   },
-  "PP-1046": {
+  "VY-1046": {
     summary: jobs[1],
-    description: "Produce a cohesive set of launch photographs for the new Kora home collection, including web and social crops.",
+    description:
+      "Produce a cohesive set of launch photographs for the new Kora home collection, including web and social crops.",
     createdAt: "20 July 2026",
     fundedAt: "23 July 2026",
     payoutAddress: "Pending worker acceptance",
     milestones: [
-      { title: "Creative direction and shot list", status: "PENDING", amount: 18000, due: "29 Jul", evidence: "Approved moodboard and shot list", note: "Waiting for worker acceptance" },
-      { title: "Final edited photographs", status: "PENDING", amount: 58000, due: "08 Aug", evidence: "24 edited originals and web crops", note: "Not started" },
+      {
+        title: "Creative direction and shot list",
+        status: "PENDING",
+        amount: 18000,
+        due: "29 Jul",
+        evidence: "Approved moodboard and shot list",
+        note: "Waiting for worker acceptance",
+      },
+      {
+        title: "Final edited photographs",
+        status: "PENDING",
+        amount: 58000,
+        due: "08 Aug",
+        evidence: "24 edited originals and web crops",
+        note: "Not started",
+      },
     ],
   },
-  "PP-1039": {
+  "VY-1039": {
     summary: jobs[2],
-    description: "Create twelve editorial posts and accompanying visual assets for the July product education campaign.",
+    description:
+      "Create twelve editorial posts and accompanying visual assets for the July product education campaign.",
     createdAt: "25 June 2026",
     fundedAt: "27 June 2026",
     payoutAddress: "ckb1qyq...3p8n4d",
     milestones: [
-      { title: "Content plan", status: "RELEASED", amount: 37500, due: "04 Jul", evidence: "Calendar and approved briefs", note: "Released 05 July" },
-      { title: "First six articles", status: "ACTIVE", amount: 37500, due: "28 Jul", evidence: "Six document links and image folder", note: "Work in progress" },
-      { title: "Final six articles", status: "PENDING", amount: 37500, due: "12 Aug", evidence: "Six document links and image folder", note: "Not started" },
+      {
+        title: "Content plan",
+        status: "RELEASED",
+        amount: 37500,
+        due: "04 Jul",
+        evidence: "Calendar and approved briefs",
+        note: "Released 05 July",
+      },
+      {
+        title: "First six articles",
+        status: "ACTIVE",
+        amount: 37500,
+        due: "28 Jul",
+        evidence: "Six document links and image folder",
+        note: "Work in progress",
+      },
+      {
+        title: "Final six articles",
+        status: "PENDING",
+        amount: 37500,
+        due: "12 Aug",
+        evidence: "Six document links and image folder",
+        note: "Not started",
+      },
     ],
   },
 } as const;

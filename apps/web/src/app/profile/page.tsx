@@ -1,5 +1,111 @@
-import { BadgeCheck, BriefcaseBusiness, Camera, Mail, MapPin, Pencil, Star, UserRound } from "lucide-react";
+import {
+  BadgeCheck,
+  BriefcaseBusiness,
+  Camera,
+  Mail,
+  MapPin,
+  Pencil,
+  Star,
+  UserRound,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 
-export default function ProfilePage() { return <AppShell><PageHeader eyebrow="Public identity" title="Profile" description="Manage how clients and workers see you on ProofPay." icon={UserRound} action={<button className="secondary-button"><Pencil size={16} /> Edit profile</button>} /><div className="profile-layout"><section className="panel profile-main"><div className="profile-identity"><div className="profile-avatar">AO<button aria-label="Change profile photo"><Camera size={14} /></button></div><div><div><h2>Alex Okafor</h2><span className="verified-chip"><BadgeCheck size={13} /> Identity verified</span></div><p>Product designer and UX strategist</p><span><MapPin size={14} /> Lagos, Nigeria</span><span><Mail size={14} /> alex@example.com</span></div></div><div className="profile-bio"><h3>About</h3><p>I help product teams turn complex financial and operational workflows into clear, accessible digital experiences. Available for focused design systems, user-flow audits, and product redesigns.</p></div><div className="profile-skills"><h3>Skills</h3><div><span>Product design</span><span>UX research</span><span>Design systems</span><span>Prototyping</span><span>Fintech</span></div></div></section><aside><section className="panel reputation-card"><h2>ProofPay history</h2><div className="reputation-score"><Star size={22} fill="currentColor" /><strong>4.9</strong><span>12 verified reviews</span></div><dl><div><dt>Completed jobs</dt><dd>16</dd></div><div><dt>On-time delivery</dt><dd>94%</dd></div><div><dt>Repeat clients</dt><dd>7</dd></div><div><dt>Disputes</dt><dd>0</dd></div></dl></section><section className="panel role-summary"><BriefcaseBusiness size={20} /><h2>Flexible roles</h2><p>This account can work as a client or worker. Permissions are determined separately for each job.</p></section></aside></div></AppShell>; }
+export default function ProfilePage() {
+  return (
+    <AppShell>
+      <PageHeader
+        eyebrow="Public identity"
+        title="Profile"
+        description="Manage how clients and workers see you on Veyrivo."
+        icon={UserRound}
+        action={
+          <button className="secondary-button">
+            <Pencil size={16} /> Edit profile
+          </button>
+        }
+      />
+      <div className="profile-layout">
+        <section className="panel profile-main">
+          <div className="profile-identity">
+            <div className="profile-avatar">
+              AO
+              <button aria-label="Change profile photo">
+                <Camera size={14} />
+              </button>
+            </div>
+            <div>
+              <div>
+                <h2>Alex Okafor</h2>
+                <span className="verified-chip">
+                  <BadgeCheck size={13} /> Identity verified
+                </span>
+              </div>
+              <p>Product designer and UX strategist</p>
+              <span>
+                <MapPin size={14} /> Lagos, Nigeria
+              </span>
+              <span>
+                <Mail size={14} /> alex@example.com
+              </span>
+            </div>
+          </div>
+          <div className="profile-bio">
+            <h3>About</h3>
+            <p>
+              I help product teams turn complex financial and operational workflows into clear,
+              accessible digital experiences. Available for focused design systems, user-flow
+              audits, and product redesigns.
+            </p>
+          </div>
+          <div className="profile-skills">
+            <h3>Skills</h3>
+            <div>
+              <span>Product design</span>
+              <span>UX research</span>
+              <span>Design systems</span>
+              <span>Prototyping</span>
+              <span>Fintech</span>
+            </div>
+          </div>
+        </section>
+        <aside>
+          <section className="panel reputation-card">
+            <h2>Veyrivo history</h2>
+            <div className="reputation-score">
+              <Star size={22} fill="currentColor" />
+              <strong>4.9</strong>
+              <span>12 verified reviews</span>
+            </div>
+            <dl>
+              <div>
+                <dt>Completed jobs</dt>
+                <dd>16</dd>
+              </div>
+              <div>
+                <dt>On-time delivery</dt>
+                <dd>94%</dd>
+              </div>
+              <div>
+                <dt>Repeat clients</dt>
+                <dd>7</dd>
+              </div>
+              <div>
+                <dt>Disputes</dt>
+                <dd>0</dd>
+              </div>
+            </dl>
+          </section>
+          <section className="panel role-summary">
+            <BriefcaseBusiness size={20} />
+            <h2>Flexible roles</h2>
+            <p>
+              This account can work as a client or worker. Permissions are determined separately for
+              each job.
+            </p>
+          </section>
+        </aside>
+      </div>
+    </AppShell>
+  );
+}

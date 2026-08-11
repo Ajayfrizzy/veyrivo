@@ -6,6 +6,11 @@ import { getCurrentUser } from "@/server/auth/session";
 export default async function AdminPage() {
   const current = await getCurrentUser();
   if (!current) redirect("/admin/login");
-  if (!["SUPPORT", "SUPER_ADMIN"].includes(current.user.systemRole)) redirect("/admin/login?unauthorized=1");
-  return <AdminShell active="dashboard"><AdminOverview /></AdminShell>;
+  if (!["SUPPORT", "SUPER_ADMIN"].includes(current.user.systemRole))
+    redirect("/admin/login?unauthorized=1");
+  return (
+    <AdminShell active="dashboard">
+      <AdminOverview />
+    </AdminShell>
+  );
 }

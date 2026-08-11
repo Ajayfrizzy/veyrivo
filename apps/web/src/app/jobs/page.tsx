@@ -11,9 +11,147 @@ import { requireUser } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 const ckb = (value: bigint) => new Intl.NumberFormat().format(Number(value) / 100_000_000);
-export default async function JobsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view = "agreements" } = await searchParams; const { user } = await requireUser();
-  const listings = view === "listings" ? await db.select().from(jobListings).where(eq(jobListings.clientUserId, user.id)).orderBy(desc(jobListings.updatedAt)) : [];
-  const bids = view === "proposals" ? await db.select({ proposal: proposals, listing: jobListings, clientName: profiles.displayName }).from(proposals).innerJoin(jobListings, eq(proposals.listingId, jobListings.id)).innerJoin(profiles, eq(jobListings.clientUserId, profiles.userId)).where(eq(proposals.workerUserId, user.id)).orderBy(desc(proposals.updatedAt)) : [];
-  return <AppShell><PageHeader eyebrow="Workspace" title="Jobs" description="Manage agreements, public listings, and proposals." icon={BriefcaseBusiness} action={<Link className="primary-button" href="/jobs/new"><Plus size={17} /> Create job</Link>} /><div className="workspace-tabs"><Link className={view === "agreements" ? "active" : ""} href="/jobs">Agreements</Link><Link className={view === "listings" ? "active" : ""} href="/jobs?view=listings">My listings</Link><Link className={view === "proposals" ? "active" : ""} href="/jobs?view=proposals">My proposals</Link></div>{view === "agreements" && <><div className="toolbar"><label className="search-field"><Search size={17} /><input aria-label="Search jobs" placeholder="Search jobs or people" /></label><button className="secondary-button"><Filter size={16} /> Filter</button></div><section className="panel data-panel"><div className="data-head"><span>Job</span><span>Status</span><span>Value</span><span>Progress</span><span>Next action</span><span /></div>{fixtureJobs.map(job => <Link className="data-row job-data-row" href={`/jobs/${job.id}`} key={job.id}><div className="entity-cell"><span className={`role-mark ${job.role.toLowerCase()}`}>{job.role[0]}</span><p><strong>{job.title}</strong><small>{job.counterparty} · {job.id} · As {job.role.toLowerCase()}</small></p></div><StatusBadge status={job.displayStatus} /><strong>{new Intl.NumberFormat().format(job.total)} {job.asset}</strong><span>{job.milestoneProgress} milestones</span><span>{job.nextAction}</span><ArrowRight size={17} /></Link>)}</section></>}{view === "listings" && <section className="panel workspace-market-list">{listings.length ? listings.map(listing => <Link href={`/discover/${listing.id}`} key={listing.id}><div><strong>{listing.title}</strong><small>{listing.category.toLowerCase()} · Updated {listing.updatedAt.toLocaleDateString()}</small></div><span className={`listing-status state-${listing.status.toLowerCase()}`}>{listing.status.toLowerCase()}</span><b>{ckb(listing.budgetMin)}–{ckb(listing.budgetMax)} CKB</b><ArrowRight size={17} /></Link>) : <p className="market-empty">You have not posted a public listing.</p>}</section>}{view === "proposals" && <section className="panel workspace-market-list">{bids.length ? bids.map(({ proposal, listing, clientName }) => <Link href={`/discover/${listing.id}`} key={proposal.id}><div><strong>{listing.title}</strong><small>{clientName} · Updated {proposal.updatedAt.toLocaleDateString()}</small></div><span className={`proposal-state state-${proposal.status.toLowerCase()}`}>{proposal.status.toLowerCase()}</span><b>{ckb(proposal.totalBid)} CKB</b><ArrowRight size={17} /></Link>) : <p className="market-empty">You have not submitted a proposal.</p>}</section>}</AppShell>;
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view = "agreements" } = await searchParams;
+  const { user } = await requireUser();
+  const listings =
+    view === "listings"
+      ? await db
+          .select()
+          .from(jobListings)
+          .where(eq(jobListings.clientUserId, user.id))
+          .orderBy(desc(jobListings.updatedAt))
+      : [];
+  const bids =
+    view === "proposals"
+      ? await db
+          .select({ proposal: proposals, listing: jobListings, clientName: profiles.displayName })
+          .from(proposals)
+          .innerJoin(jobListings, eq(proposals.listingId, jobListings.id))
+          .innerJoin(profiles, eq(jobListings.clientUserId, profiles.userId))
+          .where(eq(proposals.workerUserId, user.id))
+          .orderBy(desc(proposals.updatedAt))
+      : [];
+  return (
+    <AppShell>
+      <PageHeader
+        eyebrow="Workspace"
+        title="Jobs"
+        description="Manage agreements, public listings, and proposals."
+        icon={BriefcaseBusiness}
+        action={
+          <Link className="primary-button" href="/jobs/new">
+            <Plus size={17} /> Create job
+          </Link>
+        }
+      />
+      <div className="workspace-tabs">
+        <Link className={view === "agreements" ? "active" : ""} href="/jobs">
+          Agreements
+        </Link>
+        <Link className={view === "listings" ? "active" : ""} href="/jobs?view=listings">
+          My listings
+        </Link>
+        <Link className={view === "proposals" ? "active" : ""} href="/jobs?view=proposals">
+          My proposals
+        </Link>
+      </div>
+      {view === "agreements" && (
+        <>
+          <div className="toolbar">
+            <label className="search-field">
+              <Search size={17} />
+              <input aria-label="Search jobs" placeholder="Search jobs or people" />
+            </label>
+            <button className="secondary-button">
+              <Filter size={16} /> Filter
+            </button>
+          </div>
+          <section className="panel data-panel">
+            <div className="data-head">
+              <span>Job</span>
+              <span>Status</span>
+              <span>Value</span>
+              <span>Progress</span>
+              <span>Next action</span>
+              <span />
+            </div>
+            {fixtureJobs.map((job) => (
+              <Link className="data-row job-data-row" href={`/jobs/${job.id}`} key={job.id}>
+                <div className="entity-cell">
+                  <span className={`role-mark ${job.role.toLowerCase()}`}>{job.role[0]}</span>
+                  <p>
+                    <strong>{job.title}</strong>
+                    <small>
+                      {job.counterparty} · {job.id} · As {job.role.toLowerCase()}
+                    </small>
+                  </p>
+                </div>
+                <StatusBadge status={job.displayStatus} />
+                <strong>
+                  {new Intl.NumberFormat().format(job.total)} {job.asset}
+                </strong>
+                <span>{job.milestoneProgress} milestones</span>
+                <span>{job.nextAction}</span>
+                <ArrowRight size={17} />
+              </Link>
+            ))}
+          </section>
+        </>
+      )}
+      {view === "listings" && (
+        <section className="panel workspace-market-list">
+          {listings.length ? (
+            listings.map((listing) => (
+              <Link href={`/discover/${listing.id}`} key={listing.id}>
+                <div>
+                  <strong>{listing.title}</strong>
+                  <small>
+                    {listing.category.toLowerCase()} · Updated{" "}
+                    {listing.updatedAt.toLocaleDateString()}
+                  </small>
+                </div>
+                <span className={`listing-status state-${listing.status.toLowerCase()}`}>
+                  {listing.status.toLowerCase()}
+                </span>
+                <b>
+                  {ckb(listing.budgetMin)}–{ckb(listing.budgetMax)} CKB
+                </b>
+                <ArrowRight size={17} />
+              </Link>
+            ))
+          ) : (
+            <p className="market-empty">You have not posted a public listing.</p>
+          )}
+        </section>
+      )}
+      {view === "proposals" && (
+        <section className="panel workspace-market-list">
+          {bids.length ? (
+            bids.map(({ proposal, listing, clientName }) => (
+              <Link href={`/discover/${listing.id}`} key={proposal.id}>
+                <div>
+                  <strong>{listing.title}</strong>
+                  <small>
+                    {clientName} · Updated {proposal.updatedAt.toLocaleDateString()}
+                  </small>
+                </div>
+                <span className={`proposal-state state-${proposal.status.toLowerCase()}`}>
+                  {proposal.status.toLowerCase()}
+                </span>
+                <b>{ckb(proposal.totalBid)} CKB</b>
+                <ArrowRight size={17} />
+              </Link>
+            ))
+          ) : (
+            <p className="market-empty">You have not submitted a proposal.</p>
+          )}
+        </section>
+      )}
+    </AppShell>
+  );
 }

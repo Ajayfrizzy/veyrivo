@@ -10,6 +10,8 @@ describe("fee engine", () => {
     expect(fees.totalFunding).toBe(10_320_000_000n);
   });
 
-  it("uses the minimum network reserve for small jobs", () => expect(calculateFees(100_000_000n).networkReserve).toBe(20_000_000n));
-  it("rejects decimals, zero, negatives, and leading zeroes", () => ["1.2", "0", "-1", "01"].forEach(value => expect(() => parseSmallestUnit(value)).toThrow()));
+  it("uses the minimum network reserve for small jobs", () =>
+    expect(calculateFees(100_000_000n).networkReserve).toBe(20_000_000n));
+  it("rejects decimals, zero, negatives, and leading zeroes", () =>
+    ["1.2", "0", "-1", "01"].forEach((value) => expect(() => parseSmallestUnit(value)).toThrow()));
 });

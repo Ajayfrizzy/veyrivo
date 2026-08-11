@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@proofpay/domain"],
+  transpilePackages: ["@veyrivo/domain"],
 };
 
 export default nextConfig;

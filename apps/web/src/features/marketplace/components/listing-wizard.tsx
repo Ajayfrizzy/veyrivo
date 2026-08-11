@@ -4,12 +4,123 @@ import { ArrowLeft, BriefcaseBusiness, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { JOB_CATEGORIES } from "@proofpay/domain";
+import { JOB_CATEGORIES } from "@veyrivo/domain";
 
 const units = (value: string) => BigInt(Math.round(Number(value || 0) * 100_000_000)).toString();
 const minimumDeadline = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 export function ListingWizard() {
-  const router = useRouter(); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); setBusy(true); setError(""); const form = new FormData(event.currentTarget); try { const response = await fetch("/api/marketplace/listings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: form.get("title"), description: form.get("description"), category: form.get("category"), skills: String(form.get("skills")).split(",").map(value => value.trim()).filter(Boolean), budgetMin: units(String(form.get("budgetMin"))), budgetMax: units(String(form.get("budgetMax"))), proposalDeadline: new Date(`${form.get("proposalDeadline")}T23:59:59`).toISOString() }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message ?? "Listing could not be created."); const publish = await fetch(`/api/marketplace/listings/${body.data.id}/publish`, { method: "POST" }); if (!publish.ok) { const publishBody = await publish.json(); throw new Error(publishBody.error?.message ?? "Listing could not be published."); } router.push(`/discover/${body.data.id}`); router.refresh(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Listing could not be created."); } finally { setBusy(false); } };
-  return <div className="wizard-page listing-create"><div className="wizard-heading"><Link className="back-link" href="/jobs/new"><ArrowLeft size={17} /> Creation options</Link><div><p className="eyebrow">Public marketplace</p><h1>Post a public job</h1><p>Set a clear budget and deadline, then compare sealed worker proposals.</p></div></div><form className="form-panel listing-form" onSubmit={submit}><div className="form-title"><span><BriefcaseBusiness size={19} /></span><div><h2>Listing details</h2><p>This information will be visible publicly.</p></div></div><label>Job title<input name="title" required minLength={5} maxLength={90} /></label><label>Scope and expected outcome<textarea name="description" required minLength={40} maxLength={5000} rows={8} /></label><div className="two-fields"><label>Category<select name="category">{JOB_CATEGORIES.map(category => <option value={category} key={category}>{category.toLowerCase()}</option>)}</select></label><label>Skills<input name="skills" required placeholder="React, product design, research" /></label></div><div className="three-fields"><label>Minimum budget (CKB)<input name="budgetMin" required type="number" min="0.00000001" step="0.00000001" /></label><label>Maximum budget (CKB)<input name="budgetMax" required type="number" min="0.00000001" step="0.00000001" /></label><label>Proposal deadline<input name="proposalDeadline" required type="date" min={minimumDeadline} /></label></div>{error && <p className="form-feedback error">{error}</p>}<div className="wizard-actions"><Link className="secondary-button" href="/jobs/new">Cancel</Link><button className="primary-button" disabled={busy}><Send size={16} /> {busy ? "Publishing..." : "Publish listing"}</button></div></form></div>;
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/marketplace/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.get("title"),
+          description: form.get("description"),
+          category: form.get("category"),
+          skills: String(form.get("skills"))
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+          budgetMin: units(String(form.get("budgetMin"))),
+          budgetMax: units(String(form.get("budgetMax"))),
+          proposalDeadline: new Date(`${form.get("proposalDeadline")}T23:59:59`).toISOString(),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message ?? "Listing could not be created.");
+      const publish = await fetch(`/api/marketplace/listings/${body.data.id}/publish`, {
+        method: "POST",
+      });
+      if (!publish.ok) {
+        const publishBody = await publish.json();
+        throw new Error(publishBody.error?.message ?? "Listing could not be published.");
+      }
+      router.push(`/discover/${body.data.id}`);
+      router.refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Listing could not be created.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="wizard-page listing-create">
+      <div className="wizard-heading">
+        <Link className="back-link" href="/jobs/new">
+          <ArrowLeft size={17} /> Creation options
+        </Link>
+        <div>
+          <p className="eyebrow">Public marketplace</p>
+          <h1>Post a public job</h1>
+          <p>Set a clear budget and deadline, then compare sealed worker proposals.</p>
+        </div>
+      </div>
+      <form className="form-panel listing-form" onSubmit={submit}>
+        <div className="form-title">
+          <span>
+            <BriefcaseBusiness size={19} />
+          </span>
+          <div>
+            <h2>Listing details</h2>
+            <p>This information will be visible publicly.</p>
+          </div>
+        </div>
+        <label>
+          Job title
+          <input name="title" required minLength={5} maxLength={90} />
+        </label>
+        <label>
+          Scope and expected outcome
+          <textarea name="description" required minLength={40} maxLength={5000} rows={8} />
+        </label>
+        <div className="two-fields">
+          <label>
+            Category
+            <select name="category">
+              {JOB_CATEGORIES.map((category) => (
+                <option value={category} key={category}>
+                  {category.toLowerCase()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Skills
+            <input name="skills" required placeholder="React, product design, research" />
+          </label>
+        </div>
+        <div className="three-fields">
+          <label>
+            Minimum budget (CKB)
+            <input name="budgetMin" required type="number" min="0.00000001" step="0.00000001" />
+          </label>
+          <label>
+            Maximum budget (CKB)
+            <input name="budgetMax" required type="number" min="0.00000001" step="0.00000001" />
+          </label>
+          <label>
+            Proposal deadline
+            <input name="proposalDeadline" required type="date" min={minimumDeadline} />
+          </label>
+        </div>
+        {error && <p className="form-feedback error">{error}</p>}
+        <div className="wizard-actions">
+          <Link className="secondary-button" href="/jobs/new">
+            Cancel
+          </Link>
+          <button className="primary-button" disabled={busy}>
+            <Send size={16} /> {busy ? "Publishing..." : "Publish listing"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }

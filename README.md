@@ -1,6 +1,6 @@
-# ProofPay
+# Veyrivo
 
-ProofPay is a worker and client agreement platform for milestone-based jobs and protected CKB payments.
+Veyrivo is a worker and client agreement platform for milestone-based jobs and protected CKB payments.
 
 ## Prerequisites
 
@@ -61,12 +61,12 @@ Do not commit `apps/web/.env` or other files containing credentials.
 
 ## Demo accounts
 
-Password: `ProofPayDemo!2026`
+Password: `VeyrivoDemo!2026`
 
-- `client@proofpay.local`
-- `worker@proofpay.local`
-- `admin@proofpay.local`
-- `support@proofpay.local`
+- `client@veyrivo.local`
+- `worker@veyrivo.local`
+- `admin@veyrivo.local`
+- `support@veyrivo.local`
 
 ## Code organization rules
 
@@ -75,5 +75,5 @@ Password: `ProofPayDemo!2026`
 - Put components in `components/ui` only when they are reusable across features.
 - Keep database access and secrets out of client components.
 - Colocate focused tests with the module they cover.
-- Export shared domain types through `@proofpay/domain`; do not import its internal files from the web app.
+- Export shared domain types through `@veyrivo/domain`; do not import its internal files from the web app.
 - Do not edit files under `drizzle/` manually. Generate migrations with `npm run db:generate`.

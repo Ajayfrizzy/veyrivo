@@ -113,7 +113,11 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="job-column-head" aria-hidden="true">
-            <span>Job</span><span>Status</span><span>Value</span><span>Next action</span><span />
+            <span>Job</span>
+            <span>Status</span>
+            <span>Value</span>
+            <span>Next action</span>
+            <span />
           </div>
           <div className="job-list">
             {jobs.map((job) => (
@@ -162,7 +166,7 @@ export default function DashboardPage() {
               <strong>Review milestone proof</strong>
               <p>Checkout experience redesign</p>
               <small>Review window closes in 2 days</small>
-              <Link href="/jobs/PP-1048">
+              <Link href="/jobs/VY-1048">
                 Review proof <ArrowRight size={14} />
               </Link>
             </div>
@@ -175,7 +179,7 @@ export default function DashboardPage() {
               <strong>Invitation funded</strong>
               <p>Brand launch photography</p>
               <small>Waiting for Mira to accept</small>
-              <Link href="/jobs/PP-1046">
+              <Link href="/jobs/VY-1046">
                 View invitation <ArrowRight size={14} />
               </Link>
             </div>

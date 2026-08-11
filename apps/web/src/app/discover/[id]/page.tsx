@@ -1,5 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
-import { ArrowLeft, CalendarDays, CircleDollarSign, LockKeyhole, UserRound, UsersRound } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  CircleDollarSign,
+  LockKeyhole,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/server/db";
@@ -12,10 +19,185 @@ import { ClientProposals } from "@/features/marketplace/components/client-propos
 export const dynamic = "force-dynamic";
 const ckb = (value: bigint) => new Intl.NumberFormat().format(Number(value) / 100_000_000);
 export default async function ListingDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const [record, current] = await Promise.all([getPublicListing(id), getCurrentUser()]); if (!record || record.listing.status === "DRAFT" || record.listing.status === "CANCELLED") notFound(); const owner = current?.user.id === record.listing.clientUserId; const canSubmit = record.listing.status === "OPEN" && record.listing.proposalDeadline > new Date();
-  let ownProposal: { coverLetter: string; estimatedDurationDays: number; milestones: Array<{ title: string; description: string; amount: string; evidenceRequirements: string; deliveryDays: number }> } | undefined;
+  const { id } = await params;
+  const [record, current] = await Promise.all([getPublicListing(id), getCurrentUser()]);
+  if (!record || record.listing.status === "DRAFT" || record.listing.status === "CANCELLED")
+    notFound();
+  const owner = current?.user.id === record.listing.clientUserId;
+  const canSubmit =
+    record.listing.status === "OPEN" && record.listing.proposalDeadline > new Date();
+  let ownProposal:
+    | {
+        coverLetter: string;
+        estimatedDurationDays: number;
+        milestones: Array<{
+          title: string;
+          description: string;
+          amount: string;
+          evidenceRequirements: string;
+          deliveryDays: number;
+        }>;
+      }
+    | undefined;
   let clientRecords: React.ComponentProps<typeof ClientProposals>["records"] = [];
-  if (current && !owner) { const [proposal] = await db.select().from(proposals).where(and(eq(proposals.listingId, id), eq(proposals.workerUserId, current.user.id), eq(proposals.status, "SUBMITTED"))).limit(1); if (proposal) ownProposal = { ...proposal, milestones: (await db.select().from(proposalMilestones).where(eq(proposalMilestones.proposalId, proposal.id)).orderBy(asc(proposalMilestones.sequence))).map(item => ({ ...item, amount: item.amount.toString() })) }; }
-  if (owner) { const rows = await db.select({ proposal: proposals, worker: { displayName: profiles.displayName, headline: profiles.headline, bio: profiles.bio, countryCode: profiles.countryCode } }).from(proposals).innerJoin(profiles, eq(proposals.workerUserId, profiles.userId)).where(eq(proposals.listingId, id)).orderBy(asc(proposals.createdAt)); clientRecords = await Promise.all(rows.map(async item => ({ proposal: { ...item.proposal, totalBid: item.proposal.totalBid.toString() }, worker: item.worker, milestones: (await db.select().from(proposalMilestones).where(eq(proposalMilestones.proposalId, item.proposal.id)).orderBy(asc(proposalMilestones.sequence))).map(milestone => ({ ...milestone, amount: milestone.amount.toString() })) }))); }
-  return <div className="market-page"><MarketplaceHeader /><main><Link className="back-link" href="/discover"><ArrowLeft size={16} /> Back to discovery</Link><div className="listing-detail-layout"><article className="listing-detail"><div className="listing-detail-head"><span>{record.listing.category.toLowerCase()}</span><span className={`listing-status state-${record.listing.status.toLowerCase()}`}>{record.listing.status.toLowerCase()}</span><h1>{record.listing.title}</h1><div className="skill-list">{record.listing.skills.map(skill => <span key={skill}>{skill}</span>)}</div></div><section><h2>Scope and expected outcome</h2><p>{record.listing.description}</p></section><section className="client-public"><span className="client-mark">{record.client.displayName.slice(0, 2).toUpperCase()}</span><div><h2>{record.client.displayName}</h2><p>{record.client.headline || "ProofPay client"}{record.client.countryCode ? ` · ${record.client.countryCode}` : ""}</p><small>{record.client.bio}</small></div></section>{owner && <section className="owner-proposals"><div className="section-heading"><div><h2>Proposals</h2><p>Sealed terms visible only to you.</p></div><span>{record.proposalCount}</span></div><ClientProposals records={clientRecords} /></section>}</article><aside className="listing-sidebar"><section className="listing-facts"><div><CircleDollarSign size={18} /><span>Budget</span><strong>{ckb(record.listing.budgetMin)}–{ckb(record.listing.budgetMax)} CKB</strong></div><div><CalendarDays size={18} /><span>Proposal deadline</span><strong>{new Date(record.listing.proposalDeadline).toLocaleDateString()}</strong></div><div><UsersRound size={18} /><span>Proposals</span><strong>{record.proposalCount}</strong></div><p><LockKeyhole size={15} /> Proposal details are sealed.</p></section>{!owner && canSubmit && <ProposalComposer listingId={id} signedIn={Boolean(current)} existing={ownProposal} budgetMin={record.listing.budgetMin.toString()} budgetMax={record.listing.budgetMax.toString()} />}{owner && <section className="owner-note"><UserRound size={18} /><strong>You posted this job</strong><p>Review sealed proposals on this page.</p></section>}{!canSubmit && !owner && <section className="owner-note"><strong>Proposals closed</strong><p>This listing is no longer accepting proposals.</p></section>}</aside></div></main></div>;
+  if (current && !owner) {
+    const [proposal] = await db
+      .select()
+      .from(proposals)
+      .where(
+        and(
+          eq(proposals.listingId, id),
+          eq(proposals.workerUserId, current.user.id),
+          eq(proposals.status, "SUBMITTED"),
+        ),
+      )
+      .limit(1);
+    if (proposal)
+      ownProposal = {
+        ...proposal,
+        milestones: (
+          await db
+            .select()
+            .from(proposalMilestones)
+            .where(eq(proposalMilestones.proposalId, proposal.id))
+            .orderBy(asc(proposalMilestones.sequence))
+        ).map((item) => ({ ...item, amount: item.amount.toString() })),
+      };
+  }
+  if (owner) {
+    const rows = await db
+      .select({
+        proposal: proposals,
+        worker: {
+          displayName: profiles.displayName,
+          headline: profiles.headline,
+          bio: profiles.bio,
+          countryCode: profiles.countryCode,
+        },
+      })
+      .from(proposals)
+      .innerJoin(profiles, eq(proposals.workerUserId, profiles.userId))
+      .where(eq(proposals.listingId, id))
+      .orderBy(asc(proposals.createdAt));
+    clientRecords = await Promise.all(
+      rows.map(async (item) => ({
+        proposal: {
+          ...item.proposal,
+          totalBid: item.proposal.totalBid.toString(),
+        },
+        worker: item.worker,
+        milestones: (
+          await db
+            .select()
+            .from(proposalMilestones)
+            .where(eq(proposalMilestones.proposalId, item.proposal.id))
+            .orderBy(asc(proposalMilestones.sequence))
+        ).map((milestone) => ({
+          ...milestone,
+          amount: milestone.amount.toString(),
+        })),
+      })),
+    );
+  }
+  return (
+    <div className="market-page">
+      <MarketplaceHeader />
+      <main>
+        <Link className="back-link" href="/discover">
+          <ArrowLeft size={16} /> Back to discovery
+        </Link>
+        <div className="listing-detail-layout">
+          <article className="listing-detail">
+            <div className="listing-detail-head">
+              <span>{record.listing.category.toLowerCase()}</span>
+              <span className={`listing-status state-${record.listing.status.toLowerCase()}`}>
+                {record.listing.status.toLowerCase()}
+              </span>
+              <h1>{record.listing.title}</h1>
+              <div className="skill-list">
+                {record.listing.skills.map((skill) => (
+                  <span key={skill}>{skill}</span>
+                ))}
+              </div>
+            </div>
+            <section>
+              <h2>Scope and expected outcome</h2>
+              <p>{record.listing.description}</p>
+            </section>
+            <section className="client-public">
+              <span className="client-mark">
+                {record.client.displayName.slice(0, 2).toUpperCase()}
+              </span>
+              <div>
+                <h2>{record.client.displayName}</h2>
+                <p>
+                  {record.client.headline || "Veyrivo client"}
+                  {record.client.countryCode ? ` · ${record.client.countryCode}` : ""}
+                </p>
+                <small>{record.client.bio}</small>
+              </div>
+            </section>
+            {owner && (
+              <section className="owner-proposals">
+                <div className="section-heading">
+                  <div>
+                    <h2>Proposals</h2>
+                    <p>Sealed terms visible only to you.</p>
+                  </div>
+                  <span>{record.proposalCount}</span>
+                </div>
+                <ClientProposals records={clientRecords} />
+              </section>
+            )}
+          </article>
+          <aside className="listing-sidebar">
+            <section className="listing-facts">
+              <div>
+                <CircleDollarSign size={18} />
+                <span>Budget</span>
+                <strong>
+                  {ckb(record.listing.budgetMin)}–{ckb(record.listing.budgetMax)} CKB
+                </strong>
+              </div>
+              <div>
+                <CalendarDays size={18} />
+                <span>Proposal deadline</span>
+                <strong>{new Date(record.listing.proposalDeadline).toLocaleDateString()}</strong>
+              </div>
+              <div>
+                <UsersRound size={18} />
+                <span>Proposals</span>
+                <strong>{record.proposalCount}</strong>
+              </div>
+              <p>
+                <LockKeyhole size={15} /> Proposal details are sealed.
+              </p>
+            </section>
+            {!owner && canSubmit && (
+              <ProposalComposer
+                listingId={id}
+                signedIn={Boolean(current)}
+                existing={ownProposal}
+                budgetMin={record.listing.budgetMin.toString()}
+                budgetMax={record.listing.budgetMax.toString()}
+              />
+            )}
+            {owner && (
+              <section className="owner-note">
+                <UserRound size={18} />
+                <strong>You posted this job</strong>
+                <p>Review sealed proposals on this page.</p>
+              </section>
+            )}
+            {!canSubmit && !owner && (
+              <section className="owner-note">
+                <strong>Proposals closed</strong>
+                <p>This listing is no longer accepting proposals.</p>
+              </section>
+            )}
+          </aside>
+        </div>
+      </main>
+    </div>
+  );
 }

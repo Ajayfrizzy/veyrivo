@@ -6,9 +6,18 @@ import { ApiError, withApi } from "@/server/http/errors";
 import { assertSameOrigin } from "@/server/http/security";
 import { requireListingOwner } from "@/features/marketplace/server/access";
 
-export const POST = withApi(async (request: Request, context: RouteContext<"/api/marketplace/listings/[id]/cancel">) => {
-  assertSameOrigin(request); const { id } = await context.params; const { user } = await requireUser(); const listing = await requireListingOwner(id, user.id);
-  if (!["DRAFT", "OPEN", "CLOSED"].includes(listing.status)) throw new ApiError(409, "LISTING_STATE_CONFLICT", "This listing cannot be cancelled.");
-  await db.update(jobListings).set({ status: "CANCELLED", closedAt: new Date(), updatedAt: new Date() }).where(and(eq(jobListings.id, id), inArray(jobListings.status, ["DRAFT", "OPEN", "CLOSED"])));
-  return Response.json({ data: { id, status: "CANCELLED" } });
-});
+export const POST = withApi(
+  async (request: Request, context: RouteContext<"/api/marketplace/listings/[id]/cancel">) => {
+    assertSameOrigin(request);
+    const { id } = await context.params;
+    const { user } = await requireUser();
+    const listing = await requireListingOwner(id, user.id);
+    if (!["DRAFT", "OPEN", "CLOSED"].includes(listing.status))
+      throw new ApiError(409, "LISTING_STATE_CONFLICT", "This listing cannot be cancelled.");
+    await db
+      .update(jobListings)
+      .set({ status: "CANCELLED", closedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(jobListings.id, id), inArray(jobListings.status, ["DRAFT", "OPEN", "CLOSED"])));
+    return Response.json({ data: { id, status: "CANCELLED" } });
+  },
+);

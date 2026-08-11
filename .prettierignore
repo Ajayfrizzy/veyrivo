@@ -1,0 +1,15 @@
+# Dependencies and build output
+node_modules/
+**/.next/
+out/
+build/
+coverage/
+
+# Generated files and local data
+apps/web/drizzle/
+apps/web/next-env.d.ts
+**/*.tsbuildinfo
+docs/
+.data/
+.env*
+*.docx

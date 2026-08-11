@@ -29,11 +29,13 @@ function pageTitle(pathname: string) {
   if (/^\/jobs\/[^/]+$/.test(pathname)) return "Job Details";
   if (/^\/support\/[^/]+$/.test(pathname)) return "Support Case";
   if (/^\/admin\/support\/[^/]+$/.test(pathname)) return "Support Ticket";
-  return "ProofPay";
+  return "Veyrivo";
 }
 
 export function RouteTitle() {
   const pathname = usePathname();
-  useEffect(() => { document.title = `${pageTitle(pathname)} | ProofPay`; }, [pathname]);
+  useEffect(() => {
+    document.title = `${pageTitle(pathname)} | Veyrivo`;
+  }, [pathname]);
   return null;
 }

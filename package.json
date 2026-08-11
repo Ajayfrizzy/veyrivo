@@ -1,5 +1,5 @@
 {
-  "name": "proofpay",
+  "name": "veyrivo",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
@@ -7,14 +7,16 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=@proofpay/web",
-    "build": "npm run build --workspace=@proofpay/web",
-    "lint": "npm run lint --workspace=@proofpay/web",
-    "typecheck": "npm run typecheck --workspace=@proofpay/web",
-    "test": "npm run test --workspace=@proofpay/web",
-    "db:generate": "npm run db:generate --workspace=@proofpay/web",
-    "db:migrate": "npm run db:migrate --workspace=@proofpay/web",
-    "db:seed": "npm run db:seed --workspace=@proofpay/web"
+    "dev": "npm run dev --workspace=@veyrivo/web",
+    "build": "npm run build --workspace=@veyrivo/web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run lint --workspace=@veyrivo/web",
+    "typecheck": "npm run typecheck --workspace=@veyrivo/web",
+    "test": "npm run test --workspace=@veyrivo/web",
+    "db:generate": "npm run db:generate --workspace=@veyrivo/web",
+    "db:migrate": "npm run db:migrate --workspace=@veyrivo/web",
+    "db:seed": "npm run db:seed --workspace=@veyrivo/web"
   },
   "engines": {
     "node": ">=22"
@@ -24,5 +26,8 @@
       "postcss": "8.5.12",
       "sharp": "0.35.0"
     }
+  },
+  "devDependencies": {
+    "prettier": "3.9.6"
   }
 }
