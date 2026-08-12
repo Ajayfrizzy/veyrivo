@@ -6,7 +6,8 @@ import { useEffect } from "react";
 const exactTitles: Record<string, string> = {
   "/": "Dashboard",
   "/activity": "Activity",
-  "/discover": "Discover Jobs",
+  "/discover": "Find Work",
+  "/talent": "Find Talent",
   "/jobs": "Jobs",
   "/jobs/new": "Create Job",
   "/jobs/new/direct": "Direct Invitation",
@@ -26,6 +27,7 @@ const exactTitles: Record<string, string> = {
 function pageTitle(pathname: string) {
   if (exactTitles[pathname]) return exactTitles[pathname];
   if (/^\/discover\/[^/]+$/.test(pathname)) return "Job Listing";
+  if (/^\/talent\/[^/]+$/.test(pathname)) return "Professional Profile";
   if (/^\/jobs\/[^/]+$/.test(pathname)) return "Job Details";
   if (/^\/support\/[^/]+$/.test(pathname)) return "Support Case";
   if (/^\/admin\/support\/[^/]+$/.test(pathname)) return "Support Ticket";

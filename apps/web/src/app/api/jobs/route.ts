@@ -92,6 +92,7 @@ export const POST = withApi(async (request: Request) => {
         sequence: index + 1,
         title: milestone.title,
         description: milestone.description,
+        acceptanceCriteria: milestone.acceptanceCriteria,
         amount: BigInt(milestone.amount),
         dueAt: milestone.dueAt,
         evidenceRequirements: milestone.evidenceRequirements,

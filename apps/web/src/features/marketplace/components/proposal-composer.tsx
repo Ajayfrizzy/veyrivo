@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Info, Plus, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Info, Plus, Send, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -9,6 +9,7 @@ type Milestone = {
   id: string;
   title: string;
   description: string;
+  acceptanceCriteria: string;
   amount: string;
   evidenceRequirements: string;
   deliveryDays: number;
@@ -23,6 +24,7 @@ const blank = (): Milestone => ({
   id: crypto.randomUUID(),
   title: "",
   description: "",
+  acceptanceCriteria: "",
   amount: "",
   evidenceRequirements: "",
   deliveryDays: 7,
@@ -67,6 +69,8 @@ export function ProposalComposer({
   const [phase, setPhase] = useState<"edit" | "review">("edit");
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [assistantBusy, setAssistantBusy] = useState(false);
+  const [assistantNote, setAssistantNote] = useState("");
   const minBudget = BigInt(budgetMin);
   const maxBudget = BigInt(budgetMax);
   const total = useMemo(
@@ -91,10 +95,12 @@ export function ProposalComposer({
       if (item.title.trim().length < 2) next.push(`Add a title for milestone ${index + 1}.`);
       if (item.description.trim().length < 10)
         next.push(`Describe the deliverable for milestone ${index + 1}.`);
+      if (item.acceptanceCriteria.trim().length < 5)
+        next.push(`Add objective acceptance criteria for milestone ${index + 1}.`);
       if (!toUnits(item.amount) || toUnits(item.amount) === 0n)
         next.push(`Enter a valid positive CKB amount for milestone ${index + 1}.`);
       if (item.evidenceRequirements.trim().length < 5)
-        next.push(`Describe the proof of completion for milestone ${index + 1}.`);
+        next.push(`Describe the required proof for milestone ${index + 1}.`);
       if (
         item.deliveryDays < 1 ||
         item.deliveryDays > 365 ||
@@ -110,6 +116,50 @@ export function ProposalComposer({
       );
     setErrors([...new Set(next)]);
     return next.length === 0;
+  };
+
+  const assist = async () => {
+    if (!signedIn) {
+      router.push(`/login?returnTo=/discover/${listingId}`);
+      return;
+    }
+    setAssistantBusy(true);
+    setErrors([]);
+    setAssistantNote("");
+    const response = await fetch("/api/ai/proposal-assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId }),
+    });
+    const body = await response.json();
+    if (!response.ok) setErrors([body.error?.message ?? "Proposal assistance is unavailable."]);
+    else {
+      setCoverLetter(body.data.coverLetter);
+      setItems(
+        body.data.milestones.map(
+          (item: {
+            title: string;
+            deliverable: string;
+            acceptanceCriteria: string;
+            evidenceRequirements: string;
+            deliveryDays: number;
+            amount: string;
+          }) => ({
+            id: crypto.randomUUID(),
+            title: item.title,
+            description: item.deliverable,
+            acceptanceCriteria: item.acceptanceCriteria,
+            evidenceRequirements: item.evidenceRequirements,
+            deliveryDays: item.deliveryDays,
+            amount: displayAmount(item.amount),
+          }),
+        ),
+      );
+      setAssistantNote(
+        "Draft prepared from this listing and your Veyrivo profile. Review every claim, milestone, amount, and timing before submission.",
+      );
+    }
+    setAssistantBusy(false);
   };
 
   const review = (event: React.FormEvent) => {
@@ -138,6 +188,7 @@ export function ProposalComposer({
         milestones: items.map((item) => ({
           title: item.title,
           description: item.description,
+          acceptanceCriteria: item.acceptanceCriteria,
           amount: toUnits(item.amount)!.toString(),
           evidenceRequirements: item.evidenceRequirements,
           deliveryDays: item.deliveryDays,
@@ -206,9 +257,10 @@ export function ProposalComposer({
                   <div>
                     <strong>{item.title}</strong>
                     <p>{item.description}</p>
+                    <small>Acceptance: {item.acceptanceCriteria}</small>
                     <small>
-                      Proof: {item.evidenceRequirements} · Due {item.deliveryDays} days after
-                      project start
+                      Required proof: {item.evidenceRequirements} · Due {item.deliveryDays} days
+                      after project start
                     </small>
                   </div>
                   <em>{item.amount} CKB</em>
@@ -255,6 +307,14 @@ export function ProposalComposer({
           <h2>{existing ? "Edit your proposal" : "Submit a proposal"}</h2>
           <p>Only the client can see your terms.</p>
         </div>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={assistantBusy}
+          onClick={assist}
+        >
+          <Sparkles size={15} /> {assistantBusy ? "Preparing..." : "Draft with assistant"}
+        </button>
       </div>
       <div className="proposal-fields">
         {errors.length > 0 && (
@@ -263,6 +323,12 @@ export function ProposalComposer({
             {errors.map((error) => (
               <p key={error}>{error}</p>
             ))}
+          </div>
+        )}
+        {assistantNote && (
+          <div className="assistant-note">
+            <Sparkles size={15} />
+            <p>{assistantNote}</p>
           </div>
         )}
         <label>
@@ -325,6 +391,17 @@ export function ProposalComposer({
                 placeholder="Describe the outcome the client will receive."
               />
             </label>
+            <label>
+              Acceptance criteria
+              <textarea
+                required
+                minLength={5}
+                rows={3}
+                value={item.acceptanceCriteria}
+                onChange={(event) => update(item.id, "acceptanceCriteria", event.target.value)}
+                placeholder="State the objective conditions the client can use to approve this milestone."
+              />
+            </label>
             <div className="proposal-term-fields">
               <label>
                 Milestone amount
@@ -358,7 +435,7 @@ export function ProposalComposer({
               </label>
             </div>
             <label>
-              Proof of completion
+              Required proof
               <input
                 required
                 minLength={5}

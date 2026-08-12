@@ -15,11 +15,17 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { jobDetails } from "@/features/jobs/fixtures";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { jobs as jobsTable, milestones as milestonesTable, profiles } from "@/server/db/schema";
+import {
+  jobs as jobsTable,
+  marketplaceReviews,
+  milestones as milestonesTable,
+  profiles,
+} from "@/server/db/schema";
 import { getCurrentUser } from "@/server/auth/session";
 import { ConfirmDraftButton } from "@/features/jobs/components/confirm-draft-button";
+import { EngagementReview } from "@/features/reputation/components/engagement-review";
 
 export function generateStaticParams() {
   return Object.keys(jobDetails).map((id) => ({ id }));
@@ -47,6 +53,16 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .from(milestonesTable)
       .where(eq(milestonesTable.jobId, id))
       .orderBy(asc(milestonesTable.sequence));
+    const [existingReview] = await db
+      .select({ rating: marketplaceReviews.rating, comment: marketplaceReviews.comment })
+      .from(marketplaceReviews)
+      .where(
+        and(
+          eq(marketplaceReviews.jobId, id),
+          eq(marketplaceReviews.reviewerUserId, current.user.id),
+        ),
+      )
+      .limit(1);
     const role = record.job.clientUserId === current.user.id ? "client" : "worker";
     return (
       <AppShell>
@@ -120,7 +136,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                       <FileCheck2 size={14} /> {item.description}
                     </p>
                     <small>
-                      <Clock3 size={13} /> Evidence: {item.evidenceRequirements}
+                      <CheckCircle2 size={13} /> Acceptance:{" "}
+                      {item.acceptanceCriteria || "As agreed in the milestone terms"}
+                    </small>
+                    <small>
+                      <Clock3 size={13} /> Required proof: {item.evidenceRequirements}
                     </small>
                   </div>
                   <div>
@@ -132,6 +152,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 </article>
               ))}
             </section>
+            {record.job.status === "COMPLETED" && (
+              <EngagementReview jobId={id} existing={existingReview} />
+            )}
           </div>
           <aside className="detail-aside">
             <section className="panel next-action-card">
@@ -226,7 +249,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                     </span>
                   </div>
                   <p>
-                    <FileCheck2 size={14} /> {milestone.evidence}
+                    <FileCheck2 size={14} /> Required proof: {milestone.evidence}
                   </p>
                   <small>
                     <Clock3 size={13} /> {milestone.note}

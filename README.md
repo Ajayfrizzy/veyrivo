@@ -1,6 +1,10 @@
 # Veyrivo
 
-Veyrivo is a worker and client agreement platform for milestone-based jobs and protected CKB payments.
+Veyrivo is a trusted work marketplace where clients discover talent, professionals find opportunities, and both sides structure milestone-based work with verifiable delivery and protected payments.
+
+**Work with trust. Deliver with proof.**
+
+Trusted work marketplace for talent discovery, verifiable milestones, and protected payments.
 
 ## Prerequisites
 
@@ -65,6 +69,8 @@ Password: `VeyrivoDemo!2026`
 
 - `client@veyrivo.local`
 - `worker@veyrivo.local`
+- `designer@veyrivo.local`
+- `writer@veyrivo.local`
 - `admin@veyrivo.local`
 - `support@veyrivo.local`
 
@@ -77,3 +83,8 @@ Password: `VeyrivoDemo!2026`
 - Colocate focused tests with the module they cover.
 - Export shared domain types through `@veyrivo/domain`; do not import its internal files from the web app.
 - Do not edit files under `drizzle/` manually. Generate migrations with `npm run db:generate`.
+
+Marketplace assistance uses the server-side provider boundary in `features/ai`. Local development
+defaults to the safe mock provider; generated job and proposal drafts are always editable and are
+never published or submitted automatically. PactAgent remains the infrastructure boundary for
+escrow, settlement, and proof-processing capabilities.

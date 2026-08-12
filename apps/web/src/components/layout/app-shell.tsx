@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   UserRound,
+  UsersRound,
   WalletCards,
   X,
 } from "lucide-react";
@@ -23,7 +24,8 @@ import { LogoutButton } from "@/components/ui/logout-button";
 
 const primary = [
   { label: "Overview", href: "/", icon: House },
-  { label: "Discover jobs", href: "/discover", icon: Compass },
+  { label: "Find work", href: "/discover", icon: Compass },
+  { label: "Find talent", href: "/talent", icon: UsersRound },
   { label: "Jobs", href: "/jobs", icon: BriefcaseBusiness },
   { label: "Payments", href: "/payments", icon: CreditCard },
   { label: "Activity", href: "/activity", icon: Activity },

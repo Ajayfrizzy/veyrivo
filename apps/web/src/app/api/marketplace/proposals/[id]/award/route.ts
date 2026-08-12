@@ -111,6 +111,7 @@ export const POST = withApi(
           sequence: item.sequence,
           title: item.title,
           description: item.description,
+          acceptanceCriteria: item.acceptanceCriteria,
           amount: item.amount,
           dueAt: new Date(now.getTime() + item.deliveryDays * 86_400_000),
           evidenceRequirements: item.evidenceRequirements,

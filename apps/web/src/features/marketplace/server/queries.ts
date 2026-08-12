@@ -1,6 +1,14 @@
-import { and, count, desc, eq, gt, gte, ilike, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "@/server/db";
-import { jobListings, profiles, proposals } from "@/server/db/schema";
+import {
+  jobListings,
+  portfolioItems,
+  profiles,
+  proposalMilestones,
+  proposals,
+} from "@/server/db/schema";
+import { getReputationSummaries } from "@/features/reputation/server/queries";
+import { toPublicPortfolioItem } from "@/features/talent/server/public-profile";
 import type { z } from "zod";
 import type { listingQuerySchema } from "./schemas";
 
@@ -88,4 +96,71 @@ export async function getPublicListing(id: string) {
     .where(eq(jobListings.id, id))
     .limit(1);
   return record;
+}
+
+export async function getProposalEvaluations(listingId: string) {
+  const rows = await db
+    .select({
+      proposal: proposals,
+      worker: {
+        userId: profiles.userId,
+        displayName: profiles.displayName,
+        headline: profiles.headline,
+        bio: profiles.bio,
+        primaryRole: profiles.primaryRole,
+        skills: profiles.skills,
+        availability: profiles.availability,
+        countryCode: profiles.countryCode,
+      },
+    })
+    .from(proposals)
+    .innerJoin(profiles, eq(proposals.workerUserId, profiles.userId))
+    .where(eq(proposals.listingId, listingId))
+    .orderBy(desc(proposals.shortlistedAt), asc(proposals.createdAt));
+  const workerIds = rows.map((row) => row.worker.userId);
+  const [reputations, portfolio, listing] = await Promise.all([
+    getReputationSummaries(workerIds),
+    workerIds.length
+      ? db
+          .select()
+          .from(portfolioItems)
+          .where(inArray(portfolioItems.userId, workerIds))
+          .orderBy(desc(portfolioItems.createdAt))
+      : [],
+    db
+      .select({ skills: jobListings.skills })
+      .from(jobListings)
+      .where(eq(jobListings.id, listingId))
+      .limit(1),
+  ]);
+  const portfolioByWorker = new Map<string, typeof portfolio>();
+  for (const item of portfolio) {
+    const items = portfolioByWorker.get(item.userId) ?? [];
+    items.push(item);
+    portfolioByWorker.set(item.userId, items);
+  }
+  const requiredSkills = new Set(listing[0]?.skills ?? []);
+  for (const [userId, items] of portfolioByWorker)
+    portfolioByWorker.set(
+      userId,
+      items.sort(
+        (left, right) =>
+          right.skills.filter((skill) => requiredSkills.has(skill)).length -
+          left.skills.filter((skill) => requiredSkills.has(skill)).length,
+      ),
+    );
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      reputation: reputations.get(row.worker.userId)!,
+      portfolioPreview: (portfolioByWorker.get(row.worker.userId) ?? [])
+        .slice(0, 2)
+        .map(toPublicPortfolioItem),
+      milestones: await db
+        .select()
+        .from(proposalMilestones)
+        .where(eq(proposalMilestones.proposalId, row.proposal.id))
+        .orderBy(asc(proposalMilestones.sequence)),
+    })),
+  );
 }

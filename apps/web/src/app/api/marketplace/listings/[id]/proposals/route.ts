@@ -1,10 +1,9 @@
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   jobListings,
   notifications,
   operations,
-  profiles,
   proposalMilestones,
   proposals,
 } from "@/server/db/schema";
@@ -19,36 +18,14 @@ import {
 } from "@/features/marketplace/server/access";
 import { proposalInputSchema } from "@/features/marketplace/server/schemas";
 import { audit } from "@/server/audit";
+import { getProposalEvaluations } from "@/features/marketplace/server/queries";
 
 export const GET = withApi(
   async (_request: Request, context: RouteContext<"/api/marketplace/listings/[id]/proposals">) => {
     const { id } = await context.params;
     const { user } = await requireUser();
     await requireListingOwner(id, user.id);
-    const records = await db
-      .select({
-        proposal: proposals,
-        worker: {
-          displayName: profiles.displayName,
-          headline: profiles.headline,
-          bio: profiles.bio,
-          countryCode: profiles.countryCode,
-        },
-      })
-      .from(proposals)
-      .innerJoin(profiles, eq(proposals.workerUserId, profiles.userId))
-      .where(eq(proposals.listingId, id))
-      .orderBy(asc(proposals.createdAt));
-    const data = await Promise.all(
-      records.map(async (record) => ({
-        ...record,
-        milestones: await db
-          .select()
-          .from(proposalMilestones)
-          .where(eq(proposalMilestones.proposalId, record.proposal.id))
-          .orderBy(asc(proposalMilestones.sequence)),
-      })),
-    );
+    const data = await getProposalEvaluations(id);
     return Response.json({ data: serialize(data) });
   },
 );

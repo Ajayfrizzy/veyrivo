@@ -17,13 +17,21 @@ const listingFieldsSchema = z.object({
   budgetMax: amount,
   proposalDeadline: z.coerce.date(),
 });
-export const listingInputSchema = listingFieldsSchema.refine(
-  (value) => BigInt(value.budgetMax) >= BigInt(value.budgetMin),
-  {
+export const listingMilestoneSchema = z.object({
+  title: z.string().trim().min(2).max(120),
+  deliverable: z.string().trim().min(10).max(3000),
+  acceptanceCriteria: z.string().trim().min(5).max(2000),
+  evidenceRequirements: z.string().trim().min(5).max(1000),
+  deliveryDays: z.number().int().min(1).max(365),
+});
+export const listingInputSchema = listingFieldsSchema
+  .extend({
+    milestones: z.array(listingMilestoneSchema).min(1).max(10),
+  })
+  .refine((value) => BigInt(value.budgetMax) >= BigInt(value.budgetMin), {
     path: ["budgetMax"],
     message: "Maximum budget must be at least the minimum.",
-  },
-);
+  });
 
 export const listingUpdateSchema = listingFieldsSchema
   .partial()
@@ -50,6 +58,7 @@ export const listingQuerySchema = z.object({
 export const proposalMilestoneSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().min(10).max(3000),
+  acceptanceCriteria: z.string().trim().min(5).max(2000),
   amount,
   evidenceRequirements: z.string().trim().min(5).max(1000),
   deliveryDays: z.number().int().min(1).max(365),
@@ -88,3 +97,8 @@ export const proposalInputSchema = z
         message: "Duration must match the final milestone delivery day.",
       });
   });
+
+export const shortlistInputSchema = z.object({ shortlisted: z.boolean() });
+export const proposalMessageInputSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
+});

@@ -21,6 +21,7 @@ export const createJobSchema = z.object({
       z.object({
         title: z.string().trim().min(2).max(120),
         description: z.string().trim().min(10).max(3000),
+        acceptanceCriteria: z.string().trim().min(5).max(2000),
         amount,
         dueAt: z.coerce.date(),
         evidenceRequirements: z.string().trim().min(5).max(1000),

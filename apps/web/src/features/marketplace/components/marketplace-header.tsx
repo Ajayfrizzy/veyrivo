@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, House, ShieldCheck } from "lucide-react";
+import { BriefcaseBusiness, House, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { getCurrentUser } from "@/server/auth/session";
 
@@ -19,7 +19,10 @@ export async function MarketplaceHeader() {
           </Link>
         )}
         <Link className="market-discover-link" href="/discover">
-          <BriefcaseBusiness size={16} /> Discover jobs
+          <BriefcaseBusiness size={16} /> Find work
+        </Link>
+        <Link className="market-talent-link" href="/talent">
+          <UsersRound size={16} /> Find talent
         </Link>
         {current ? (
           <>

@@ -1,0 +1,1 @@
+CREATE INDEX "profiles_categories_gin_idx" ON "profiles" USING gin ("preferred_work_categories");

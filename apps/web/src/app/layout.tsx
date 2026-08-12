@@ -4,7 +4,8 @@ import { RouteTitle } from "@/components/layout/route-title";
 
 export const metadata: Metadata = {
   title: { default: "Veyrivo", template: "%s | Veyrivo" },
-  description: "Protected milestone payments on Nervos CKB",
+  description:
+    "Veyrivo is a trusted work marketplace where clients discover talent, professionals find opportunities, and both sides structure milestone-based work with verifiable delivery and protected payments.",
   applicationName: "Veyrivo",
 };
 

@@ -1,0 +1,169 @@
+import {
+  ArrowRight,
+  BadgeCheck,
+  BriefcaseBusiness,
+  Clock3,
+  Search,
+  Star,
+  UsersRound,
+} from "lucide-react";
+import { JOB_CATEGORIES } from "@veyrivo/domain";
+import Link from "next/link";
+import { MarketplaceHeader } from "@/features/marketplace/components/marketplace-header";
+import { listTalent } from "@/features/talent/server/queries";
+import { talentQuerySchema } from "@/features/talent/server/schemas";
+
+export const dynamic = "force-dynamic";
+
+export default async function TalentPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const raw = await searchParams;
+  const scalar = Object.fromEntries(
+    Object.entries(raw).flatMap(([key, value]) =>
+      typeof value === "string" ? [[key, value]] : [],
+    ),
+  );
+  const input = talentQuerySchema.parse(scalar);
+  const records = await listTalent(input);
+  return (
+    <div className="market-page talent-page">
+      <MarketplaceHeader />
+      <main>
+        <section className="market-title">
+          <div>
+            <p className="eyebrow">Veyrivo talent marketplace</p>
+            <h1>Find professionals with verifiable work history</h1>
+            <p>
+              Compare skills, portfolios, availability, and reputation earned through completed
+              Veyrivo work.
+            </p>
+          </div>
+          <Link className="secondary-button" href="/discover">
+            <BriefcaseBusiness size={16} /> Find work
+          </Link>
+        </section>
+        <form className="market-filters talent-filters">
+          <label className="search-field">
+            <Search size={17} />
+            <input
+              name="query"
+              defaultValue={input.query}
+              placeholder="Search name, headline, role, or skills"
+            />
+          </label>
+          <input name="skill" defaultValue={input.skill} placeholder="Skill" aria-label="Skill" />
+          <input name="role" defaultValue={input.role} placeholder="Role" aria-label="Role" />
+          <select name="category" defaultValue={input.category ?? ""} aria-label="Work category">
+            <option value="">Any category</option>
+            {JOB_CATEGORIES.map((category) => (
+              <option value={category} key={category}>
+                {category.toLowerCase()}
+              </option>
+            ))}
+          </select>
+          <select
+            name="availability"
+            defaultValue={input.availability ?? ""}
+            aria-label="Availability"
+          >
+            <option value="">Any availability</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="LIMITED">Limited</option>
+            <option value="UNAVAILABLE">Unavailable</option>
+          </select>
+          <select
+            name="minCompletedJobs"
+            defaultValue={input.minCompletedJobs}
+            aria-label="Completed work"
+          >
+            <option value="0">Any work history</option>
+            <option value="1">1+ completed job</option>
+            <option value="5">5+ completed jobs</option>
+            <option value="10">10+ completed jobs</option>
+          </select>
+          <select name="sort" defaultValue={input.sort} aria-label="Sort talent">
+            <option value="reputation">Best reputation</option>
+            <option value="completed">Most completed work</option>
+            <option value="recent">Recently updated</option>
+          </select>
+          <button className="secondary-button">Apply filters</button>
+        </form>
+        {records.length ? (
+          <section className="talent-grid">
+            {records.map(({ profile, reputation, portfolioPreview }) => (
+              <article className="talent-card" key={profile.userId}>
+                <div className="talent-card-head">
+                  <span className="profile-avatar">
+                    {profile.displayName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <div>
+                    <h2>{profile.displayName}</h2>
+                    <p>{profile.headline || profile.primaryRole || "Veyrivo professional"}</p>
+                  </div>
+                  <span
+                    className={`availability availability-${profile.availability.toLowerCase()}`}
+                  >
+                    {profile.availability.toLowerCase()}
+                  </span>
+                </div>
+                <div className="talent-meta">
+                  {reputation.identityVerified && (
+                    <span>
+                      <BadgeCheck size={14} /> Identity verified
+                    </span>
+                  )}
+                  {profile.countryCode && <span>{profile.countryCode}</span>}
+                  <span>
+                    <Clock3 size={13} /> {profile.timezone}
+                  </span>
+                </div>
+                <div className="skill-list">
+                  {profile.skills.slice(0, 5).map((skill) => (
+                    <span key={skill}>{skill}</span>
+                  ))}
+                </div>
+                {portfolioPreview.length > 0 && (
+                  <div className="talent-portfolio-preview">
+                    <span>Portfolio</span>
+                    <p>{portfolioPreview.map((item) => item.title).join(" · ")}</p>
+                  </div>
+                )}
+                <dl className="talent-stats">
+                  <div>
+                    <dt>
+                      <Star size={13} /> Rating
+                    </dt>
+                    <dd>{reputation.averageRating?.toFixed(1) ?? "New"}</dd>
+                  </div>
+                  <div>
+                    <dt>Completed jobs</dt>
+                    <dd>{reputation.completedJobs}</dd>
+                  </div>
+                  <div>
+                    <dt>Released milestones</dt>
+                    <dd>{reputation.completedMilestones}</dd>
+                  </div>
+                </dl>
+                <Link
+                  className="secondary-button talent-profile-link"
+                  href={`/talent/${profile.userId}`}
+                >
+                  View profile <ArrowRight size={15} />
+                </Link>
+              </article>
+            ))}
+          </section>
+        ) : (
+          <section className="market-empty">
+            <UsersRound size={28} />
+            <h2>No matching professionals</h2>
+            <p>Adjust the filters or remove the completed-work requirement.</p>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -1,107 +1,84 @@
-import {
-  BadgeCheck,
-  BriefcaseBusiness,
-  Camera,
-  Mail,
-  MapPin,
-  Pencil,
-  Star,
-  UserRound,
-} from "lucide-react";
+import { BadgeCheck, BriefcaseBusiness, Star, UserRound } from "lucide-react";
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { ProfileEditor } from "@/features/talent/components/profile-editor";
+import { getReputationSummary } from "@/features/reputation/server/queries";
+import { getCurrentUser } from "@/server/auth/session";
+import { db } from "@/server/db";
+import { portfolioItems } from "@/server/db/schema";
+import { desc, eq } from "drizzle-orm";
 
-export default function ProfilePage() {
+export const dynamic = "force-dynamic";
+
+export default async function ProfilePage() {
+  const current = await getCurrentUser();
+  if (!current?.profile) redirect("/login?returnTo=/profile");
+  const [portfolio, reputation] = await Promise.all([
+    db
+      .select()
+      .from(portfolioItems)
+      .where(eq(portfolioItems.userId, current.user.id))
+      .orderBy(desc(portfolioItems.createdAt)),
+    getReputationSummary(current.user.id),
+  ]);
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Public identity"
-        title="Profile"
-        description="Manage how clients and workers see you on Veyrivo."
+        eyebrow="Professional identity"
+        title="Profile and portfolio"
+        description="Manage the public experience clients use to evaluate your work on Veyrivo."
         icon={UserRound}
-        action={
-          <button className="secondary-button">
-            <Pencil size={16} /> Edit profile
-          </button>
-        }
       />
       <div className="profile-layout">
-        <section className="panel profile-main">
-          <div className="profile-identity">
-            <div className="profile-avatar">
-              AO
-              <button aria-label="Change profile photo">
-                <Camera size={14} />
-              </button>
-            </div>
-            <div>
-              <div>
-                <h2>Alex Okafor</h2>
-                <span className="verified-chip">
-                  <BadgeCheck size={13} /> Identity verified
-                </span>
-              </div>
-              <p>Product designer and UX strategist</p>
-              <span>
-                <MapPin size={14} /> Lagos, Nigeria
-              </span>
-              <span>
-                <Mail size={14} /> alex@example.com
-              </span>
-            </div>
-          </div>
-          <div className="profile-bio">
-            <h3>About</h3>
-            <p>
-              I help product teams turn complex financial and operational workflows into clear,
-              accessible digital experiences. Available for focused design systems, user-flow
-              audits, and product redesigns.
-            </p>
-          </div>
-          <div className="profile-skills">
-            <h3>Skills</h3>
-            <div>
-              <span>Product design</span>
-              <span>UX research</span>
-              <span>Design systems</span>
-              <span>Prototyping</span>
-              <span>Fintech</span>
-            </div>
-          </div>
-        </section>
+        <ProfileEditor initialProfile={current.profile} initialPortfolio={portfolio} />
         <aside>
           <section className="panel reputation-card">
-            <h2>Veyrivo history</h2>
+            <h2>Verified Veyrivo reputation</h2>
             <div className="reputation-score">
-              <Star size={22} fill="currentColor" />
-              <strong>4.9</strong>
-              <span>12 verified reviews</span>
+              <Star size={22} fill={reputation.averageRating ? "currentColor" : "none"} />
+              <strong>{reputation.averageRating?.toFixed(1) ?? "New"}</strong>
+              <span>
+                {reputation.reviewCount
+                  ? `${reputation.reviewCount} verified ${reputation.reviewCount === 1 ? "review" : "reviews"}`
+                  : "No verified reviews yet"}
+              </span>
             </div>
             <dl>
               <div>
                 <dt>Completed jobs</dt>
-                <dd>16</dd>
+                <dd>{reputation.completedJobs}</dd>
               </div>
               <div>
-                <dt>On-time delivery</dt>
-                <dd>94%</dd>
+                <dt>Released milestones</dt>
+                <dd>{reputation.completedMilestones}</dd>
+              </div>
+              <div>
+                <dt>On-time completion</dt>
+                <dd>
+                  {reputation.onTimeRate === null ? "Not available" : `${reputation.onTimeRate}%`}
+                </dd>
               </div>
               <div>
                 <dt>Repeat clients</dt>
-                <dd>7</dd>
-              </div>
-              <div>
-                <dt>Disputes</dt>
-                <dd>0</dd>
+                <dd>{reputation.repeatClients}</dd>
               </div>
             </dl>
           </section>
           <section className="panel role-summary">
-            <BriefcaseBusiness size={20} />
-            <h2>Flexible roles</h2>
+            {reputation.identityVerified ? (
+              <BadgeCheck size={20} />
+            ) : (
+              <BriefcaseBusiness size={20} />
+            )}
+            <h2>
+              {reputation.identityVerified
+                ? "Identity verified"
+                : "Professional marketplace profile"}
+            </h2>
             <p>
-              This account can work as a client or worker. Permissions are determined separately for
-              each job.
+              Reputation shown here comes only from completed Veyrivo engagements and released
+              milestones.
             </p>
           </section>
         </aside>

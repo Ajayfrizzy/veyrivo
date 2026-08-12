@@ -145,6 +145,11 @@ export const proposalStatusEnum = pgEnum("proposal_status", [
   "REJECTED",
   "ACCEPTED",
 ]);
+export const availabilityStatusEnum = pgEnum("availability_status", [
+  "AVAILABLE",
+  "LIMITED",
+  "UNAVAILABLE",
+]);
 
 export const users = pgTable(
   "users",
@@ -163,18 +168,68 @@ export const users = pgTable(
   (table) => [uniqueIndex("users_email_unique").on(sql`lower(${table.email})`)],
 );
 
-export const profiles = pgTable("profiles", {
-  userId: uuid("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-  displayName: varchar("display_name", { length: 100 }).notNull(),
-  headline: varchar("headline", { length: 160 }),
-  bio: text("bio"),
-  countryCode: varchar("country_code", { length: 2 }),
-  timezone: varchar("timezone", { length: 80 }).default("Africa/Lagos").notNull(),
-  avatarKey: text("avatar_key"),
-  ...timestamps,
-});
+export const profiles = pgTable(
+  "profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: varchar("display_name", { length: 100 }).notNull(),
+    headline: varchar("headline", { length: 160 }),
+    bio: text("bio"),
+    primaryRole: varchar("primary_role", { length: 100 }),
+    skills: jsonb("skills").$type<string[]>().default([]).notNull(),
+    experienceLevel: varchar("experience_level", { length: 30 }),
+    yearsExperience: integer("years_experience"),
+    languages: jsonb("languages").$type<string[]>().default([]).notNull(),
+    availability: availabilityStatusEnum("availability").default("AVAILABLE").notNull(),
+    preferredWorkCategories: jsonb("preferred_work_categories")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
+    countryCode: varchar("country_code", { length: 2 }),
+    timezone: varchar("timezone", { length: 80 }).default("Africa/Lagos").notNull(),
+    avatarKey: text("avatar_key"),
+    githubUrl: text("github_url"),
+    websiteUrl: text("website_url"),
+    linkedinUrl: text("linkedin_url"),
+    isPublic: boolean("is_public").default(true).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("profiles_talent_role_idx").on(table.primaryRole),
+    index("profiles_talent_availability_idx").on(table.availability),
+    index("profiles_talent_country_idx").on(table.countryCode),
+    index("profiles_skills_gin_idx").using("gin", table.skills),
+    index("profiles_categories_gin_idx").using("gin", table.preferredWorkCategories),
+    check(
+      "profiles_years_experience_valid",
+      sql`${table.yearsExperience} IS NULL OR ${table.yearsExperience} BETWEEN 0 AND 80`,
+    ),
+  ],
+);
+
+export const portfolioItems = pgTable(
+  "portfolio_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 140 }).notNull(),
+    description: text("description").notNull(),
+    projectUrl: text("project_url"),
+    githubUrl: text("github_url"),
+    mediaKey: text("media_key"),
+    skills: jsonb("skills").$type<string[]>().default([]).notNull(),
+    projectRole: varchar("project_role", { length: 120 }),
+    ...timestamps,
+  },
+  (table) => [
+    index("portfolio_items_user_idx").on(table.userId, table.createdAt),
+    index("portfolio_items_skills_gin_idx").using("gin", table.skills),
+  ],
+);
 
 export const authIdentities = pgTable(
   "auth_identities",
@@ -360,6 +415,7 @@ export const milestones = pgTable(
     sequence: integer("sequence").notNull(),
     title: varchar("title", { length: 120 }).notNull(),
     description: text("description").notNull(),
+    acceptanceCriteria: text("acceptance_criteria").default("").notNull(),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
     evidenceRequirements: text("evidence_requirements").notNull(),
@@ -444,6 +500,28 @@ export const jobListings = pgTable(
   ],
 );
 
+export const jobListingMilestones = pgTable(
+  "job_listing_milestones",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => jobListings.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    deliverable: text("deliverable").notNull(),
+    acceptanceCriteria: text("acceptance_criteria").notNull(),
+    evidenceRequirements: text("evidence_requirements").notNull(),
+    deliveryDays: integer("delivery_days").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("job_listing_milestone_sequence_unique").on(table.listingId, table.sequence),
+    index("job_listing_milestones_listing_idx").on(table.listingId, table.sequence),
+    check("job_listing_milestone_delivery_valid", sql`${table.deliveryDays} BETWEEN 1 AND 365`),
+  ],
+);
+
 export const proposals = pgTable(
   "proposals",
   {
@@ -458,6 +536,8 @@ export const proposals = pgTable(
     totalBid: bigint("total_bid", { mode: "bigint" }).notNull(),
     estimatedDurationDays: integer("estimated_duration_days").notNull(),
     status: proposalStatusEnum("status").default("SUBMITTED").notNull(),
+    shortlistedAt: timestamp("shortlisted_at", { withTimezone: true }),
+    shortlistedBy: uuid("shortlisted_by").references(() => users.id),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).defaultNow().notNull(),
     withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
@@ -466,6 +546,7 @@ export const proposals = pgTable(
   (table) => [
     uniqueIndex("proposal_listing_worker_unique").on(table.listingId, table.workerUserId),
     index("proposals_listing_idx").on(table.listingId, table.createdAt),
+    index("proposals_shortlist_idx").on(table.listingId, table.shortlistedAt),
     index("proposals_worker_idx").on(table.workerUserId, table.createdAt),
     check("proposal_amount_positive", sql`${table.totalBid} > 0`),
     check("proposal_duration_valid", sql`${table.estimatedDurationDays} BETWEEN 1 AND 365`),
@@ -482,6 +563,7 @@ export const proposalMilestones = pgTable(
     sequence: integer("sequence").notNull(),
     title: varchar("title", { length: 120 }).notNull(),
     description: text("description").notNull(),
+    acceptanceCriteria: text("acceptance_criteria").default("").notNull(),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
     evidenceRequirements: text("evidence_requirements").notNull(),
     deliveryDays: integer("delivery_days").notNull(),
@@ -491,6 +573,57 @@ export const proposalMilestones = pgTable(
     uniqueIndex("proposal_milestone_sequence_unique").on(table.proposalId, table.sequence),
     check("proposal_milestone_amount_positive", sql`${table.amount} > 0`),
     check("proposal_milestone_delivery_valid", sql`${table.deliveryDays} BETWEEN 1 AND 365`),
+  ],
+);
+
+export const proposalMessages = pgTable(
+  "proposal_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    proposalId: uuid("proposal_id")
+      .notNull()
+      .references(() => proposals.id, { onDelete: "cascade" }),
+    senderUserId: uuid("sender_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("proposal_messages_thread_idx").on(table.proposalId, table.createdAt),
+    index("proposal_messages_sender_idx").on(table.senderUserId, table.createdAt),
+    check("proposal_message_body_length", sql`char_length(${table.body}) BETWEEN 1 AND 2000`),
+  ],
+);
+
+export const marketplaceReviews = pgTable(
+  "marketplace_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    reviewerUserId: uuid("reviewer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectUserId: uuid("subject_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    comment: text("comment"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("marketplace_review_job_reviewer_unique").on(table.jobId, table.reviewerUserId),
+    index("marketplace_reviews_subject_idx").on(table.subjectUserId, table.createdAt),
+    index("marketplace_reviews_job_idx").on(table.jobId),
+    check("marketplace_review_rating_valid", sql`${table.rating} BETWEEN 1 AND 5`),
+    check(
+      "marketplace_review_distinct_users",
+      sql`${table.reviewerUserId} <> ${table.subjectUserId}`,
+    ),
   ],
 );
 

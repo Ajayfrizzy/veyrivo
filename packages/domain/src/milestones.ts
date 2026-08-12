@@ -21,6 +21,7 @@ export interface MilestoneDraft {
   id: string;
   title: string;
   description: string;
+  acceptanceCriteria: string;
   amount: number;
   dueDate: string;
   evidence: string;

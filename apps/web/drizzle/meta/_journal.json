@@ -36,6 +36,20 @@
       "when": 1785355782539,
       "tag": "0004_woozy_susan_delgado",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786477065828,
+      "tag": "0005_cooing_maestro",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786505969452,
+      "tag": "0006_crazy_captain_stacy",
+      "breakpoints": true
     }
   ]
 }

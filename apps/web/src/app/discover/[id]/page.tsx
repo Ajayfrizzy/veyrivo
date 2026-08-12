@@ -10,17 +10,26 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/server/db";
-import { proposalMilestones, proposals, profiles } from "@/server/db/schema";
+import { jobListingMilestones, proposalMilestones, proposals } from "@/server/db/schema";
 import { getCurrentUser } from "@/server/auth/session";
-import { getPublicListing } from "@/features/marketplace/server/queries";
+import { getProposalEvaluations, getPublicListing } from "@/features/marketplace/server/queries";
 import { MarketplaceHeader } from "@/features/marketplace/components/marketplace-header";
 import { ProposalComposer } from "@/features/marketplace/components/proposal-composer";
 import { ClientProposals } from "@/features/marketplace/components/client-proposals";
+import { ProposalThread } from "@/features/marketplace/components/proposal-thread";
 export const dynamic = "force-dynamic";
 const ckb = (value: bigint) => new Intl.NumberFormat().format(Number(value) / 100_000_000);
 export default async function ListingDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [record, current] = await Promise.all([getPublicListing(id), getCurrentUser()]);
+  const [record, current, listingMilestones] = await Promise.all([
+    getPublicListing(id),
+    getCurrentUser(),
+    db
+      .select()
+      .from(jobListingMilestones)
+      .where(eq(jobListingMilestones.listingId, id))
+      .orderBy(asc(jobListingMilestones.sequence)),
+  ]);
   if (!record || record.listing.status === "DRAFT" || record.listing.status === "CANCELLED")
     notFound();
   const owner = current?.user.id === record.listing.clientUserId;
@@ -33,6 +42,7 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
         milestones: Array<{
           title: string;
           description: string;
+          acceptanceCriteria: string;
           amount: string;
           evidenceRequirements: string;
           deliveryDays: number;
@@ -40,19 +50,15 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
       }
     | undefined;
   let clientRecords: React.ComponentProps<typeof ClientProposals>["records"] = [];
+  let workerProposalId: string | undefined;
   if (current && !owner) {
     const [proposal] = await db
       .select()
       .from(proposals)
-      .where(
-        and(
-          eq(proposals.listingId, id),
-          eq(proposals.workerUserId, current.user.id),
-          eq(proposals.status, "SUBMITTED"),
-        ),
-      )
+      .where(and(eq(proposals.listingId, id), eq(proposals.workerUserId, current.user.id)))
       .limit(1);
-    if (proposal)
+    workerProposalId = proposal?.id;
+    if (proposal?.status === "SUBMITTED")
       ownProposal = {
         ...proposal,
         milestones: (
@@ -65,39 +71,20 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
       };
   }
   if (owner) {
-    const rows = await db
-      .select({
-        proposal: proposals,
-        worker: {
-          displayName: profiles.displayName,
-          headline: profiles.headline,
-          bio: profiles.bio,
-          countryCode: profiles.countryCode,
-        },
-      })
-      .from(proposals)
-      .innerJoin(profiles, eq(proposals.workerUserId, profiles.userId))
-      .where(eq(proposals.listingId, id))
-      .orderBy(asc(proposals.createdAt));
-    clientRecords = await Promise.all(
-      rows.map(async (item) => ({
-        proposal: {
-          ...item.proposal,
-          totalBid: item.proposal.totalBid.toString(),
-        },
-        worker: item.worker,
-        milestones: (
-          await db
-            .select()
-            .from(proposalMilestones)
-            .where(eq(proposalMilestones.proposalId, item.proposal.id))
-            .orderBy(asc(proposalMilestones.sequence))
-        ).map((milestone) => ({
-          ...milestone,
-          amount: milestone.amount.toString(),
-        })),
+    const rows = await getProposalEvaluations(id);
+    clientRecords = rows.map((item) => ({
+      proposal: {
+        ...item.proposal,
+        totalBid: item.proposal.totalBid.toString(),
+      },
+      worker: item.worker,
+      reputation: item.reputation,
+      portfolioPreview: item.portfolioPreview,
+      milestones: item.milestones.map((milestone) => ({
+        ...milestone,
+        amount: milestone.amount.toString(),
       })),
-    );
+    }));
   }
   return (
     <div className="market-page">
@@ -124,6 +111,25 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
               <h2>Scope and expected outcome</h2>
               <p>{record.listing.description}</p>
             </section>
+            {listingMilestones.length > 0 && (
+              <section className="listing-outcomes">
+                <h2>Verifiable milestone expectations</h2>
+                <ol>
+                  {listingMilestones.map((milestone) => (
+                    <li key={milestone.id}>
+                      <span>{milestone.sequence}</span>
+                      <div>
+                        <strong>{milestone.title}</strong>
+                        <p>{milestone.deliverable}</p>
+                        <small>Acceptance: {milestone.acceptanceCriteria}</small>
+                        <small>Required proof: {milestone.evidenceRequirements}</small>
+                      </div>
+                      <b>Day {milestone.deliveryDays}</b>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
             <section className="client-public">
               <span className="client-mark">
                 {record.client.displayName.slice(0, 2).toUpperCase()}
@@ -146,7 +152,7 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
                   </div>
                   <span>{record.proposalCount}</span>
                 </div>
-                <ClientProposals records={clientRecords} />
+                <ClientProposals records={clientRecords} currentUserId={current!.user.id} />
               </section>
             )}
           </article>
@@ -180,6 +186,13 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
                 existing={ownProposal}
                 budgetMin={record.listing.budgetMin.toString()}
                 budgetMax={record.listing.budgetMax.toString()}
+              />
+            )}
+            {!owner && workerProposalId && current && (
+              <ProposalThread
+                proposalId={workerProposalId}
+                currentUserId={current.user.id}
+                closed={!ownProposal}
               />
             )}
             {owner && (

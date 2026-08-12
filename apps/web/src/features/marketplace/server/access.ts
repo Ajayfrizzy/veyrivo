@@ -2,6 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { jobListings, profiles, proposals } from "@/server/db/schema";
 import { ApiError } from "@/server/http/errors";
+import { canAccessProposalThread } from "./authorization";
+
+export { canAccessProposalThread, canShortlistProposal } from "./authorization";
 
 export async function requireListingOwner(listingId: string, userId: string) {
   const [listing] = await db
@@ -21,6 +24,21 @@ export async function requireProposalOwner(proposalId: string, userId: string) {
     .where(and(eq(proposals.id, proposalId), eq(proposals.workerUserId, userId)))
     .limit(1);
   if (!record) throw new ApiError(404, "PROPOSAL_NOT_FOUND", "Proposal was not found.");
+  return record;
+}
+
+export async function requireProposalParticipant(proposalId: string, userId: string) {
+  const [record] = await db
+    .select({ proposal: proposals, listing: jobListings })
+    .from(proposals)
+    .innerJoin(jobListings, eq(proposals.listingId, jobListings.id))
+    .where(eq(proposals.id, proposalId))
+    .limit(1);
+  if (
+    !record ||
+    !canAccessProposalThread(record.listing.clientUserId, record.proposal.workerUserId, userId)
+  )
+    throw new ApiError(404, "PROPOSAL_NOT_FOUND", "Proposal was not found.");
   return record;
 }
 

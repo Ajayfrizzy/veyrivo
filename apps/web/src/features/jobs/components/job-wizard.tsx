@@ -22,6 +22,7 @@ const emptyMilestone = (index: number): MilestoneDraft => ({
   id: crypto.randomUUID(),
   title: `Milestone ${index}`,
   description: "",
+  acceptanceCriteria: "",
   amount: 0,
   dueDate: "",
   evidence: "",
@@ -64,13 +65,14 @@ export function JobWizard() {
         (item) =>
           !item.title.trim() ||
           !item.description.trim() ||
+          !item.acceptanceCriteria.trim() ||
           item.amount <= 0 ||
           !item.dueDate ||
           !item.evidence.trim(),
       )
     )
       nextErrors.push(
-        "Complete the title, deliverable, amount, due date, and evidence requirement for every milestone.",
+        "Complete the title, deliverable, acceptance criteria, amount, due date, and required proof for every milestone.",
       );
     if (step === 2 && !/^\S+@\S+\.\S+$/.test(worker))
       nextErrors.push("Enter a valid worker email address.");
@@ -95,6 +97,7 @@ export function JobWizard() {
       const milestonePayload = milestones.map((item) => ({
         title: item.title,
         description: item.description,
+        acceptanceCriteria: item.acceptanceCriteria,
         amount: BigInt(Math.round(Number(item.amount) * 100_000_000)).toString(),
         dueAt: new Date(`${item.dueDate}T23:59:59`).toISOString(),
         evidenceRequirements: item.evidence,
@@ -280,6 +283,17 @@ export function JobWizard() {
                       placeholder="What must the worker deliver?"
                     />
                   </label>
+                  <label>
+                    Acceptance criteria
+                    <textarea
+                      rows={3}
+                      value={milestone.acceptanceCriteria}
+                      onChange={(event) =>
+                        updateMilestone(milestone.id, "acceptanceCriteria", event.target.value)
+                      }
+                      placeholder="What objective conditions must be met for approval?"
+                    />
+                  </label>
                   <div className="two-fields">
                     <label>
                       Due date
@@ -292,7 +306,7 @@ export function JobWizard() {
                       />
                     </label>
                     <label>
-                      Required evidence
+                      Required proof
                       <input
                         value={milestone.evidence}
                         onChange={(event) =>
@@ -397,8 +411,9 @@ export function JobWizard() {
                     <span>{index + 1}</span>
                     <p>
                       <strong>{item.title}</strong>
+                      <small>Acceptance: {item.acceptanceCriteria}</small>
                       <small>
-                        {item.dueDate} · {item.evidence}
+                        {item.dueDate} · Required proof: {item.evidence}
                       </small>
                     </p>
                     <b>{format(item.amount)} CKB</b>
