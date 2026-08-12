@@ -10,6 +10,7 @@ import {
   milestones,
   portfolioItems,
   profiles,
+  proofSubmissions,
   proposalMilestones,
   proposals,
   users,
@@ -321,35 +322,49 @@ async function main() {
         updatedAt: completedAt,
       })
       .returning();
-    await db.insert(milestones).values([
-      {
-        jobId: job.id,
-        sequence: 1,
-        title: "Reporting foundation",
-        description: "Build the report shell, filter controls, and accessible table states.",
-        acceptanceCriteria:
-          "Keyboard and screen-reader checks pass for the agreed table and filter flows.",
-        amount: 40_000_000_000n,
-        dueAt: new Date(startedAt.getTime() + 8 * 86_400_000),
-        evidenceRequirements: "Preview URL, accessibility checklist, and source commit",
-        status: "RELEASED",
-        createdAt: startedAt,
-        updatedAt: new Date(startedAt.getTime() + 7 * 86_400_000),
-      },
-      {
-        jobId: job.id,
-        sequence: 2,
-        title: "Exports and handoff",
-        description: "Complete export states, responsive checks, tests, and handoff notes.",
-        acceptanceCriteria: "Exports work for agreed formats and the regression checks pass.",
-        amount: 50_000_000_000n,
-        dueAt: new Date(startedAt.getTime() + 18 * 86_400_000),
-        evidenceRequirements: "Test report, final preview URL, and handoff document",
-        status: "RELEASED",
-        createdAt: startedAt,
-        updatedAt: new Date(startedAt.getTime() + 16 * 86_400_000),
-      },
-    ]);
+    const releasedMilestones = await db
+      .insert(milestones)
+      .values([
+        {
+          jobId: job.id,
+          sequence: 1,
+          title: "Reporting foundation",
+          description: "Build the report shell, filter controls, and accessible table states.",
+          acceptanceCriteria:
+            "Keyboard and screen-reader checks pass for the agreed table and filter flows.",
+          amount: 40_000_000_000n,
+          dueAt: new Date(startedAt.getTime() + 8 * 86_400_000),
+          evidenceRequirements: "Preview URL, accessibility checklist, and source commit",
+          status: "RELEASED",
+          createdAt: startedAt,
+          updatedAt: completedAt,
+        },
+        {
+          jobId: job.id,
+          sequence: 2,
+          title: "Exports and handoff",
+          description: "Complete export states, responsive checks, tests, and handoff notes.",
+          acceptanceCriteria: "Exports work for agreed formats and the regression checks pass.",
+          amount: 50_000_000_000n,
+          dueAt: new Date(startedAt.getTime() + 18 * 86_400_000),
+          evidenceRequirements: "Test report, final preview URL, and handoff document",
+          status: "RELEASED",
+          createdAt: startedAt,
+          updatedAt: completedAt,
+        },
+      ])
+      .returning();
+    await db.insert(proofSubmissions).values(
+      releasedMilestones.map((milestone, index) => ({
+        milestoneId: milestone.id,
+        submittedBy: worker.id,
+        version: 1,
+        note: "Completed demo delivery with the agreed evidence and review materials.",
+        links: ["https://example.com/accessible-reporting-delivery"],
+        reviewDeadline: new Date(startedAt.getTime() + (index === 0 ? 12 : 22) * 86_400_000),
+        submittedAt: new Date(startedAt.getTime() + (index === 0 ? 7 : 16) * 86_400_000),
+      })),
+    );
     await db.insert(marketplaceReviews).values([
       {
         jobId: job.id,

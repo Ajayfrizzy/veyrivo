@@ -11,7 +11,8 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketplaceHeader } from "@/features/marketplace/components/marketplace-header";
-import { getPublicTalent } from "@/features/talent/server/queries";
+import { getTalentForViewer } from "@/features/talent/server/queries";
+import { getCurrentUser } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +22,20 @@ export default async function PublicTalentProfile({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  const talent = await getPublicTalent(userId);
+  const current = await getCurrentUser();
+  const isOwner = current?.user.id === userId;
+  const talent = await getTalentForViewer(userId, current?.user.id);
   if (!talent) notFound();
   const { profile, portfolio, reputation } = talent;
   return (
     <div className="market-page public-talent-page">
       <MarketplaceHeader />
       <main>
+        {isOwner && !current.profile?.isPublic && (
+          <p className="private-preview-notice">
+            Private profile preview. Other marketplace users cannot view this page.
+          </p>
+        )}
         <Link className="back-link" href="/talent">
           <ArrowLeft size={16} /> Back to talent
         </Link>

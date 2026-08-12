@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canModifyPortfolio } from "./authorization";
+import { canModifyPortfolio, canViewTalentProfile } from "./authorization";
+import { assertProfileCanBePublished, getMissingPublicationFields } from "./publication";
 import { toPublicPortfolioItem, toPublicTalentProfile, type ProfileRecord } from "./public-profile";
 import { portfolioInputSchema, profileInputSchema, talentQuerySchema } from "./schemas";
 
@@ -56,6 +57,13 @@ describe("talent profiles", () => {
     expect(canModifyPortfolio("owner", "other-user")).toBe(false);
   });
 
+  it("keeps private profiles hidden while allowing owner preview", () => {
+    expect(canViewTalentProfile(false, "owner")).toBe(false);
+    expect(canViewTalentProfile(false, "owner", "other-user")).toBe(false);
+    expect(canViewTalentProfile(false, "owner", "owner")).toBe(true);
+    expect(canViewTalentProfile(true, "owner")).toBe(true);
+  });
+
   it("normalizes professional profile and discovery inputs", () => {
     const profile = profileInputSchema.parse({
       displayName: "Maya Chen",
@@ -78,9 +86,36 @@ describe("talent profiles", () => {
     expect(profile.skills).toEqual(["react", "typescript"]);
     expect(profile.countryCode).toBe("NG");
     expect(profile.githubUrl).toBeNull();
+    expect(profile).not.toHaveProperty("isPublic");
     expect(talentQuerySchema.parse({ minCompletedJobs: "5" }).minCompletedJobs).toBe(5);
     expect(() =>
       portfolioInputSchema.parse({ title: "x", description: "short", skills: [] }),
     ).toThrow();
+  });
+
+  it("rejects incomplete profiles and allows complete profiles to be published", () => {
+    const incomplete = {
+      displayName: "Maya Chen",
+      headline: null,
+      primaryRole: null,
+      bio: null,
+      skills: [],
+    };
+    expect(getMissingPublicationFields(incomplete)).toEqual([
+      "professional headline or primary role",
+      "bio",
+      "at least one skill",
+    ]);
+    expect(() => assertProfileCanBePublished(incomplete)).toThrow(
+      /Complete your profile before publishing/,
+    );
+    expect(() =>
+      assertProfileCanBePublished({
+        ...incomplete,
+        primaryRole: "Frontend engineering",
+        bio: "I deliver accessible applications with clear, reviewable milestones.",
+        skills: ["typescript"],
+      }),
+    ).not.toThrow();
   });
 });

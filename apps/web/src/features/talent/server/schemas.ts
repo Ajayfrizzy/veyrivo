@@ -30,8 +30,9 @@ export const profileInputSchema = z.object({
   githubUrl: optionalUrl,
   websiteUrl: optionalUrl,
   linkedinUrl: optionalUrl,
-  isPublic: z.boolean(),
 });
+
+export const profileVisibilitySchema = z.object({ isPublic: z.boolean() });
 
 export const portfolioInputSchema = z.object({
   title: z.string().trim().min(2).max(140),

@@ -6,6 +6,7 @@ import { portfolioItems, profiles } from "@/server/db/schema";
 import { withApi } from "@/server/http/errors";
 import { assertSameOrigin } from "@/server/http/security";
 import { profileInputSchema } from "@/features/talent/server/schemas";
+import { assertProfileCanBePublished } from "@/features/talent/server/publication";
 
 export const GET = withApi(async () => {
   const { user } = await requireUser();
@@ -24,6 +25,12 @@ export const PATCH = withApi(async (request: Request) => {
   assertSameOrigin(request);
   const { user } = await requireUser();
   const input = profileInputSchema.parse(await request.json());
+  const [storedProfile] = await db
+    .select({ isPublic: profiles.isPublic })
+    .from(profiles)
+    .where(eq(profiles.userId, user.id))
+    .limit(1);
+  if (storedProfile?.isPublic) assertProfileCanBePublished(input);
   const [profile] = await db
     .update(profiles)
     .set({ ...input, updatedAt: new Date() })

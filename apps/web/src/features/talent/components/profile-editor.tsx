@@ -1,7 +1,18 @@
 "use client";
 
 import { JOB_CATEGORIES } from "@veyrivo/domain";
-import { ExternalLink, Github, Globe2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import {
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Github,
+  Globe2,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -69,6 +80,7 @@ export function ProfileEditor({
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [feedbackIsError, setFeedbackIsError] = useState(false);
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
 
@@ -76,6 +88,7 @@ export function ProfileEditor({
     event.preventDefault();
     setBusy(true);
     setFeedback("");
+    setFeedbackIsError(false);
     const response = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -91,8 +104,10 @@ export function ProfileEditor({
       }),
     });
     const body = await response.json();
-    if (!response.ok) setFeedback(body.error?.message ?? "Profile could not be saved.");
-    else {
+    if (!response.ok) {
+      setFeedbackIsError(true);
+      setFeedback(body.error?.message ?? "Profile could not be saved.");
+    } else {
       setProfile(body.data);
       setEditing(false);
       setFeedback("Profile saved.");
@@ -118,6 +133,7 @@ export function ProfileEditor({
     event.preventDefault();
     setBusy(true);
     setFeedback("");
+    setFeedbackIsError(false);
     const response = await fetch(
       portfolioId ? `/api/profile/portfolio/${portfolioId}` : "/api/profile/portfolio",
       {
@@ -130,8 +146,10 @@ export function ProfileEditor({
       },
     );
     const body = await response.json();
-    if (!response.ok) setFeedback(body.error?.message ?? "Portfolio item could not be saved.");
-    else {
+    if (!response.ok) {
+      setFeedbackIsError(true);
+      setFeedback(body.error?.message ?? "Portfolio item could not be saved.");
+    } else {
       setPortfolio((items) =>
         portfolioId
           ? items.map((item) => (item.id === portfolioId ? body.data : item))
@@ -152,7 +170,30 @@ export function ProfileEditor({
     if (response.ok) setPortfolio((items) => items.filter((item) => item.id !== id));
     else {
       const body = await response.json();
+      setFeedbackIsError(true);
       setFeedback(body.error?.message ?? "Portfolio item could not be removed.");
+    }
+    setBusy(false);
+  };
+
+  const updateVisibility = async () => {
+    const makePublic = !profile.isPublic;
+    setBusy(true);
+    setFeedback("");
+    setFeedbackIsError(false);
+    const response = await fetch("/api/profile/visibility", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPublic: makePublic }),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setFeedbackIsError(true);
+      setFeedback(body.error?.message ?? "Profile visibility could not be changed.");
+    } else {
+      setProfile(body.data);
+      setFeedback(makePublic ? "Profile published." : "Profile is now private.");
+      router.refresh();
     }
     setBusy(false);
   };
@@ -176,7 +217,7 @@ export function ProfileEditor({
           </div>
           <div className="profile-editor-actions">
             <Link className="secondary-button" href={`/talent/${profile.userId}`}>
-              <ExternalLink size={15} /> Public profile
+              <ExternalLink size={15} /> Preview profile
             </Link>
             <button className="secondary-button" onClick={() => setEditing((value) => !value)}>
               {editing ? <X size={15} /> : <Pencil size={15} />}
@@ -185,9 +226,7 @@ export function ProfileEditor({
           </div>
         </div>
         {feedback && (
-          <p className={`form-feedback ${feedback.endsWith("saved.") ? "success" : "error"}`}>
-            {feedback}
-          </p>
+          <p className={`form-feedback ${feedbackIsError ? "error" : "success"}`}>{feedback}</p>
         )}
         {editing ? (
           <form className="profile-edit-form" onSubmit={saveProfile}>
@@ -349,14 +388,6 @@ export function ProfileEditor({
                 />
               </label>
             </div>
-            <label className="terms-check profile-public-toggle">
-              <input
-                type="checkbox"
-                checked={profile.isPublic}
-                onChange={(event) => set("isPublic", event.target.checked)}
-              />
-              <span>Show my professional profile in talent discovery.</span>
-            </label>
             <button className="primary-button" disabled={busy}>
               <Save size={16} /> {busy ? "Saving..." : "Save profile"}
             </button>
@@ -396,6 +427,32 @@ export function ProfileEditor({
             </div>
           </div>
         )}
+      </section>
+
+      <section className="panel profile-visibility">
+        <div>
+          <span className={`visibility-icon ${profile.isPublic ? "public" : ""}`}>
+            {profile.isPublic ? <Eye size={18} /> : <EyeOff size={18} />}
+          </span>
+          <div>
+            <h2>Talent profile visibility</h2>
+            <strong>{profile.isPublic ? "Public" : "Private"}</strong>
+            <p>
+              {profile.isPublic
+                ? "Your professional profile, portfolio and Veyrivo reputation can appear in Talent Discovery."
+                : "Your profile is only visible to you and participants in existing Veyrivo engagements where required."}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className={profile.isPublic ? "secondary-button" : "primary-button"}
+          onClick={updateVisibility}
+          disabled={busy}
+        >
+          {profile.isPublic ? <EyeOff size={16} /> : <Eye size={16} />}
+          {profile.isPublic ? "Make profile private" : "Publish profile"}
+        </button>
       </section>
 
       <section className="panel portfolio-manager">

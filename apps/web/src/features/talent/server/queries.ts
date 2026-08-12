@@ -3,16 +3,13 @@ import type { z } from "zod";
 import { db } from "@/server/db";
 import { portfolioItems, profiles } from "@/server/db/schema";
 import { getReputationSummaries, getReputationSummary } from "@/features/reputation/server/queries";
+import { canViewTalentProfile } from "./authorization";
 import { toPublicPortfolioItem, toPublicTalentProfile } from "./public-profile";
 import type { talentQuerySchema } from "./schemas";
 
-export async function getPublicTalent(userId: string) {
-  const [profile] = await db
-    .select()
-    .from(profiles)
-    .where(and(eq(profiles.userId, userId), eq(profiles.isPublic, true)))
-    .limit(1);
-  if (!profile) return null;
+async function getTalentProfile(userId: string, actorUserId?: string) {
+  const [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+  if (!profile || !canViewTalentProfile(profile.isPublic, profile.userId, actorUserId)) return null;
   const [portfolio, reputation] = await Promise.all([
     db
       .select()
@@ -26,6 +23,14 @@ export async function getPublicTalent(userId: string) {
     portfolio: portfolio.map(toPublicPortfolioItem),
     reputation,
   };
+}
+
+export function getPublicTalent(userId: string) {
+  return getTalentProfile(userId);
+}
+
+export function getTalentForViewer(userId: string, actorUserId?: string) {
+  return getTalentProfile(userId, actorUserId);
 }
 
 export async function listTalent(input: z.infer<typeof talentQuerySchema>) {

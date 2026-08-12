@@ -193,7 +193,7 @@ export const profiles = pgTable(
     githubUrl: text("github_url"),
     websiteUrl: text("website_url"),
     linkedinUrl: text("linkedin_url"),
-    isPublic: boolean("is_public").default(true).notNull(),
+    isPublic: boolean("is_public").default(false).notNull(),
     ...timestamps,
   },
   (table) => [

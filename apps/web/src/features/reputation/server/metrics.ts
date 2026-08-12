@@ -2,7 +2,7 @@ import type { ReputationSummary } from "./queries";
 
 export function calculateReputation(input: {
   completedJobs: Array<{ id: string; clientUserId: string }>;
-  releasedMilestones: Array<{ dueAt: Date; updatedAt: Date }>;
+  releasedMilestones: Array<{ dueAt: Date; submittedAt: Date | null }>;
   ratings: number[];
   identityVerified: boolean;
 }): ReputationSummary {
@@ -10,6 +10,9 @@ export function calculateReputation(input: {
   for (const job of input.completedJobs)
     clientCounts.set(job.clientUserId, (clientCounts.get(job.clientUserId) ?? 0) + 1);
   const ratingTotal = input.ratings.reduce((sum, rating) => sum + rating, 0);
+  const submittedMilestones = input.releasedMilestones.filter(
+    (milestone): milestone is { dueAt: Date; submittedAt: Date } => milestone.submittedAt !== null,
+  );
   return {
     averageRating: input.ratings.length
       ? Math.round((ratingTotal / input.ratings.length) * 10) / 10
@@ -17,11 +20,11 @@ export function calculateReputation(input: {
     reviewCount: input.ratings.length,
     completedJobs: input.completedJobs.length,
     completedMilestones: input.releasedMilestones.length,
-    onTimeRate: input.releasedMilestones.length
+    onTimeRate: submittedMilestones.length
       ? Math.round(
-          (input.releasedMilestones.filter((milestone) => milestone.updatedAt <= milestone.dueAt)
+          (submittedMilestones.filter((milestone) => milestone.submittedAt <= milestone.dueAt)
             .length /
-            input.releasedMilestones.length) *
+            submittedMilestones.length) *
             100,
         )
       : null,

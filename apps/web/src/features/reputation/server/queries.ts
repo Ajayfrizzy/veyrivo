@@ -1,6 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/server/db";
-import { identityVerifications, jobs, marketplaceReviews, milestones } from "@/server/db/schema";
+import {
+  identityVerifications,
+  jobs,
+  marketplaceReviews,
+  milestones,
+  proofSubmissions,
+} from "@/server/db/schema";
 import { calculateReputation } from "./metrics";
 
 export type ReputationSummary = {
@@ -21,9 +27,17 @@ export async function getReputationSummaries(userIds: string[]) {
 
   const [workRows, reviewRows, verificationRows] = await Promise.all([
     db
-      .select({ job: jobs, milestone: milestones })
+      .select({
+        job: jobs,
+        milestone: milestones,
+        proofSubmittedAt: proofSubmissions.submittedAt,
+      })
       .from(jobs)
       .leftJoin(milestones, eq(milestones.jobId, jobs.id))
+      .leftJoin(
+        proofSubmissions,
+        and(eq(proofSubmissions.milestoneId, milestones.id), eq(proofSubmissions.version, 1)),
+      )
       .where(and(inArray(jobs.workerUserId, uniqueIds), eq(jobs.status, "COMPLETED"))),
     db
       .select()
@@ -41,7 +55,7 @@ export async function getReputationSummaries(userIds: string[]) {
   ]);
 
   const jobsByWorker = new Map<string, Map<string, typeof jobs.$inferSelect>>();
-  const milestonesByWorker = new Map<string, (typeof milestones.$inferSelect)[]>();
+  const milestonesByWorker = new Map<string, Array<{ dueAt: Date; submittedAt: Date | null }>>();
   const ratingsByUser = new Map<string, number[]>();
   for (const row of workRows) {
     if (!row.job.workerUserId) continue;
@@ -50,7 +64,10 @@ export async function getReputationSummaries(userIds: string[]) {
     jobsByWorker.set(row.job.workerUserId, workerJobs);
     if (row.milestone?.status === "RELEASED") {
       const workerMilestones = milestonesByWorker.get(row.job.workerUserId) ?? [];
-      workerMilestones.push(row.milestone);
+      workerMilestones.push({
+        dueAt: row.milestone.dueAt,
+        submittedAt: row.proofSubmittedAt,
+      });
       milestonesByWorker.set(row.job.workerUserId, workerMilestones);
     }
   }

@@ -4608,13 +4608,65 @@ button {
   font-weight: 600;
   text-transform: capitalize;
 }
-.category-checks input,
-.profile-public-toggle input {
+.category-checks input {
   width: 15px;
   height: 15px;
 }
-.profile-public-toggle {
+.profile-visibility,
+.profile-visibility > div {
   display: flex;
+  align-items: center;
+}
+.profile-visibility {
+  justify-content: space-between;
+  gap: 18px;
+}
+.profile-visibility > div {
+  min-width: 0;
+  gap: 12px;
+}
+.profile-visibility h2,
+.profile-visibility p {
+  margin: 0;
+}
+.profile-visibility h2 {
+  font-size: 14px;
+}
+.profile-visibility strong {
+  display: block;
+  margin-top: 5px;
+  color: #344054;
+  font-size: 10px;
+}
+.profile-visibility p {
+  max-width: 620px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.visibility-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--muted);
+  background: var(--soft-line);
+}
+.visibility-icon.public {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.private-preview-notice {
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #344054;
+  background: white;
+  font-size: 10px;
 }
 .profile-view-body {
   border-top: 1px solid var(--soft-line);
@@ -5032,6 +5084,13 @@ button {
   }
   .profile-editor-actions,
   .profile-editor-actions > * {
+    width: 100%;
+  }
+  .profile-visibility {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .profile-visibility > button {
     width: 100%;
   }
   .professional-facts,
