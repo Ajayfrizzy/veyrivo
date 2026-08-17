@@ -26,8 +26,11 @@ export default async function DiscoverPage({
         <section className="market-title">
           <div>
             <p className="eyebrow">Veyrivo marketplace</p>
-            <h1>Find work with protected milestone payments</h1>
-            <p>Browse public opportunities and submit sealed proposals directly to clients.</p>
+            <h1>Find work built around clear, verifiable milestones</h1>
+            <p>
+              Work with defined deliverables, objective acceptance criteria, required proof, and
+              protected payment.
+            </p>
           </div>
           <Link className="primary-button" href="/jobs/new/public">
             Post a job

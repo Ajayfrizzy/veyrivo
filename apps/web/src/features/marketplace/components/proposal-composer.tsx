@@ -156,7 +156,7 @@ export function ProposalComposer({
         ),
       );
       setAssistantNote(
-        "Draft prepared from this listing and your Veyrivo profile. Review every claim, milestone, amount, and timing before submission.",
+        "Draft generated - review every suggested claim, milestone, amount, and timing before submission.",
       );
     }
     setAssistantBusy(false);
@@ -381,7 +381,7 @@ export function ProposalComposer({
               />
             </label>
             <label>
-              Deliverable
+              What will you deliver?
               <textarea
                 required
                 minLength={10}
@@ -390,9 +390,10 @@ export function ProposalComposer({
                 onChange={(event) => update(item.id, "description", event.target.value)}
                 placeholder="Describe the outcome the client will receive."
               />
+              <small>Formal term: deliverable</small>
             </label>
             <label>
-              Acceptance criteria
+              How will success be confirmed?
               <textarea
                 required
                 minLength={5}
@@ -401,6 +402,7 @@ export function ProposalComposer({
                 onChange={(event) => update(item.id, "acceptanceCriteria", event.target.value)}
                 placeholder="State the objective conditions the client can use to approve this milestone."
               />
+              <small>Formal term: acceptance criteria</small>
             </label>
             <div className="proposal-term-fields">
               <label>
@@ -435,7 +437,7 @@ export function ProposalComposer({
               </label>
             </div>
             <label>
-              Required proof
+              What proof will you provide?
               <input
                 required
                 minLength={5}
@@ -443,6 +445,7 @@ export function ProposalComposer({
                 onChange={(event) => update(item.id, "evidenceRequirements", event.target.value)}
                 placeholder="e.g. Preview URL, source commit, and test report"
               />
+              <small>Formal term: required proof</small>
             </label>
           </fieldset>
         ))}

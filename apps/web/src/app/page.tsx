@@ -3,7 +3,11 @@ import {
   Check,
   CircleDollarSign,
   Clock3,
+  Compass,
+  Plus,
   ShieldCheck,
+  UserRound,
+  UsersRound,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
@@ -14,16 +18,67 @@ import { jobs } from "@/features/jobs/fixtures";
 
 const format = (value: number) => new Intl.NumberFormat("en-US").format(value);
 
-export default function DashboardPage() {
+import { getCurrentUser } from "@/server/auth/session";
+import { db } from "@/server/db";
+import { jobListings, proposals } from "@/server/db/schema";
+import { eq, sql } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const current = await getCurrentUser();
+  const displayName = current?.profile?.displayName?.split(" ")[0] || "there";
+  let marketplaceActivity = 0;
+  if (current) {
+    const [listingCount, proposalCount] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(jobListings)
+        .where(eq(jobListings.clientUserId, current.user.id)),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(proposals)
+        .where(eq(proposals.workerUserId, current.user.id)),
+    ]);
+    marketplaceActivity =
+      Number(listingCount[0]?.count ?? 0) + Number(proposalCount[0]?.count ?? 0);
+  }
   return (
     <AppShell>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">Thursday, 23 July</p>
-          <h1>Good afternoon, Alex</h1>
+          <p className="eyebrow">Work with trust. Deliver with proof.</p>
+          <h1>Welcome{displayName === "there" ? "" : `, ${displayName}`}</h1>
           <p>Here is what needs your attention across your jobs.</p>
         </div>
       </div>
+
+      {marketplaceActivity === 0 && (
+        <section className="first-user-panel" aria-labelledby="welcome-title">
+          <div>
+            <p className="eyebrow">Start here</p>
+            <h2 id="welcome-title">Welcome to Veyrivo</h2>
+            <p>
+              Build a trusted professional profile, discover opportunities or talent, and work
+              through clear, verifiable milestones.
+            </p>
+          </div>
+          <div className="first-user-actions">
+            <Link className="primary-button" href="/profile">
+              <UserRound size={16} /> Complete profile
+            </Link>
+            <Link className="secondary-button" href="/discover">
+              <Compass size={16} /> Find work
+            </Link>
+            <Link className="secondary-button" href="/talent">
+              <UsersRound size={16} /> Find talent
+            </Link>
+            <Link className="secondary-button" href="/jobs/new/public">
+              <Plus size={16} /> Post a job
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="readiness-strip" aria-labelledby="readiness-title">
         <div className="readiness-icon">

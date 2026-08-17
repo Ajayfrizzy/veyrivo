@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   Clock3,
+  Filter,
   Search,
   Star,
   UsersRound,
@@ -14,6 +15,7 @@ import { listTalent } from "@/features/talent/server/queries";
 import { talentQuerySchema } from "@/features/talent/server/schemas";
 
 export const dynamic = "force-dynamic";
+const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 export default async function TalentPage({
   searchParams,
@@ -55,7 +57,6 @@ export default async function TalentPage({
             />
           </label>
           <input name="skill" defaultValue={input.skill} placeholder="Skill" aria-label="Skill" />
-          <input name="role" defaultValue={input.role} placeholder="Role" aria-label="Role" />
           <select name="category" defaultValue={input.category ?? ""} aria-label="Work category">
             <option value="">Any category</option>
             {JOB_CATEGORIES.map((category) => (
@@ -74,21 +75,34 @@ export default async function TalentPage({
             <option value="LIMITED">Limited</option>
             <option value="UNAVAILABLE">Unavailable</option>
           </select>
-          <select
-            name="minCompletedJobs"
-            defaultValue={input.minCompletedJobs}
-            aria-label="Completed work"
-          >
-            <option value="0">Any work history</option>
-            <option value="1">1+ completed job</option>
-            <option value="5">5+ completed jobs</option>
-            <option value="10">10+ completed jobs</option>
-          </select>
-          <select name="sort" defaultValue={input.sort} aria-label="Sort talent">
-            <option value="reputation">Best reputation</option>
-            <option value="completed">Most completed work</option>
-            <option value="recent">Recently updated</option>
-          </select>
+          <details className="advanced-filters">
+            <summary>
+              <Filter size={16} /> More filters
+            </summary>
+            <div>
+              <input
+                name="role"
+                defaultValue={input.role}
+                placeholder="Professional role"
+                aria-label="Role"
+              />
+              <select
+                name="minCompletedJobs"
+                defaultValue={input.minCompletedJobs}
+                aria-label="Completed work"
+              >
+                <option value="0">Any work history</option>
+                <option value="1">1+ completed job</option>
+                <option value="5">5+ completed jobs</option>
+                <option value="10">10+ completed jobs</option>
+              </select>
+              <select name="sort" defaultValue={input.sort} aria-label="Sort talent">
+                <option value="reputation">Best reputation</option>
+                <option value="completed">Most completed work</option>
+                <option value="recent">Recently updated</option>
+              </select>
+            </div>
+          </details>
           <button className="secondary-button">Apply filters</button>
         </form>
         {records.length ? (
@@ -103,11 +117,11 @@ export default async function TalentPage({
                     <h2>{profile.displayName}</h2>
                     <p>{profile.headline || profile.primaryRole || "Veyrivo professional"}</p>
                   </div>
-                  <span
-                    className={`availability availability-${profile.availability.toLowerCase()}`}
-                  >
-                    {profile.availability.toLowerCase()}
-                  </span>
+                </div>
+                <div className="skill-list">
+                  {profile.skills.slice(0, 5).map((skill) => (
+                    <span key={skill}>{skill}</span>
+                  ))}
                 </div>
                 <div className="talent-meta">
                   {reputation.identityVerified && (
@@ -115,15 +129,18 @@ export default async function TalentPage({
                       <BadgeCheck size={14} /> Identity verified
                     </span>
                   )}
-                  {profile.countryCode && <span>{profile.countryCode}</span>}
+                  {profile.countryCode && <span>{countryNames.of(profile.countryCode)}</span>}
                   <span>
                     <Clock3 size={13} /> {profile.timezone}
                   </span>
-                </div>
-                <div className="skill-list">
-                  {profile.skills.slice(0, 5).map((skill) => (
-                    <span key={skill}>{skill}</span>
-                  ))}
+                  <span
+                    className={`availability availability-${profile.availability.toLowerCase()}`}
+                  >
+                    <CircleAvailability />{" "}
+                    {profile.availability === "LIMITED"
+                      ? "Limited availability"
+                      : profile.availability.toLowerCase()}
+                  </span>
                 </div>
                 {portfolioPreview.length > 0 && (
                   <div className="talent-portfolio-preview">
@@ -142,7 +159,7 @@ export default async function TalentPage({
                     <dt>Completed jobs</dt>
                     <dd>{reputation.completedJobs}</dd>
                   </div>
-                  <div>
+                  <div className="secondary-stat">
                     <dt>Released milestones</dt>
                     <dd>{reputation.completedMilestones}</dd>
                   </div>
@@ -166,4 +183,8 @@ export default async function TalentPage({
       </main>
     </div>
   );
+}
+
+function CircleAvailability() {
+  return <span className="availability-dot" aria-hidden="true" />;
 }

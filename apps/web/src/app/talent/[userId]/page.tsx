@@ -7,6 +7,7 @@ import {
   Globe2,
   MapPin,
   Star,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,6 +16,7 @@ import { getTalentForViewer } from "@/features/talent/server/queries";
 import { getCurrentUser } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
+const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 export default async function PublicTalentProfile({
   params,
@@ -58,7 +60,7 @@ export default async function PublicTalentProfile({
                 <div className="talent-meta">
                   {profile.countryCode && (
                     <span>
-                      <MapPin size={14} /> {profile.countryCode}
+                      <MapPin size={14} /> {countryNames.of(profile.countryCode)}
                     </span>
                   )}
                   <span>
@@ -118,7 +120,7 @@ export default async function PublicTalentProfile({
                 )}
               </div>
             </section>
-            <section className="public-profile-section portfolio-public">
+            <section className="public-profile-section portfolio-public" id="portfolio">
               <div className="section-heading plain-heading">
                 <div>
                   <h2>Portfolio</h2>
@@ -162,6 +164,19 @@ export default async function PublicTalentProfile({
             </section>
           </div>
           <aside>
+            {!isOwner && current && (
+              <section className="talent-hire-actions">
+                <p className="eyebrow">Work together</p>
+                <h2>Interested in this professional?</h2>
+                <p>Structure the work with clear milestones and protected payment.</p>
+                <Link className="primary-button" href="/jobs/new/direct">
+                  <Send size={16} /> Invite to a job
+                </Link>
+                <a className="secondary-button" href="#portfolio">
+                  View portfolio
+                </a>
+              </section>
+            )}
             <section className="reputation-public">
               <p className="eyebrow">Verified Veyrivo work</p>
               <div className="reputation-score">

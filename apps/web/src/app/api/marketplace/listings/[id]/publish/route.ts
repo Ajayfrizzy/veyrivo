@@ -14,6 +14,8 @@ export const POST = withApi(
     const { id } = await context.params;
     const { user } = await requireUser();
     const listing = await requireListingOwner(id, user.id);
+    if (listing.status === "OPEN" && listing.publishedAt)
+      return Response.json({ data: serialize(listing), idempotentReplay: true });
     if (listing.status !== "DRAFT" || listing.proposalDeadline <= new Date())
       throw new ApiError(409, "LISTING_STATE_CONFLICT", "Only a current draft can be published.");
     const [updated] = await db

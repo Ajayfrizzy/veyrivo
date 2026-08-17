@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, House, ShieldCheck, UsersRound } from "lucide-react";
+import { Bell, BriefcaseBusiness, House, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { getCurrentUser } from "@/server/auth/session";
 
@@ -28,6 +28,20 @@ export async function MarketplaceHeader() {
           <>
             <Link className="market-jobs-link" href="/jobs">
               My jobs
+            </Link>
+            <Link className="market-icon-link" href="/notifications" aria-label="Notifications">
+              <Bell size={17} />
+            </Link>
+            <Link className="market-account-link" href="/profile">
+              <span>
+                {(current.profile?.displayName || current.user.email)
+                  .split(/\s+|@/)
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </span>
+              <UserRound size={15} /> Profile
             </Link>
             <Link className="primary-button" href="/jobs/new/public">
               Post a job

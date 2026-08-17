@@ -1,4 +1,4 @@
-import { ArrowRight, BriefcaseBusiness, Filter, Plus, Search } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Compass, Filter, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { AppShell } from "@/components/layout/app-shell";
@@ -125,7 +125,14 @@ export default async function JobsPage({
               </Link>
             ))
           ) : (
-            <p className="market-empty">You have not posted a public listing.</p>
+            <div className="market-empty account-empty">
+              <BriefcaseBusiness size={26} />
+              <h2>No jobs yet</h2>
+              <p>Post a job to start comparing proposals from Veyrivo professionals.</p>
+              <Link className="primary-button" href="/jobs/new/public">
+                <Plus size={16} /> Post a job
+              </Link>
+            </div>
           )}
         </section>
       )}
@@ -148,7 +155,14 @@ export default async function JobsPage({
               </Link>
             ))
           ) : (
-            <p className="market-empty">You have not submitted a proposal.</p>
+            <div className="market-empty account-empty">
+              <Compass size={26} />
+              <h2>No proposals yet</h2>
+              <p>Browse opportunities that match your skills and submit your first proposal.</p>
+              <Link className="primary-button" href="/discover">
+                <Compass size={16} /> Find work
+              </Link>
+            </div>
           )}
         </section>
       )}

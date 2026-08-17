@@ -1,7 +1,18 @@
 "use client";
 
 import { JOB_CATEGORIES } from "@veyrivo/domain";
-import { ArrowLeft, BriefcaseBusiness, Plus, Send, Sparkles, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BriefcaseBusiness,
+  Check,
+  CheckCircle2,
+  Pencil,
+  Plus,
+  Send,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,6 +26,8 @@ type ListingMilestone = {
   deliveryDays: number;
 };
 
+type Stage = 1 | 2 | 3;
+
 const blankMilestone = (deliveryDays = 7): ListingMilestone => ({
   id: crypto.randomUUID(),
   title: "",
@@ -26,8 +39,16 @@ const blankMilestone = (deliveryDays = 7): ListingMilestone => ({
 const units = (value: string) => BigInt(Math.round(Number(value || 0) * 100_000_000)).toString();
 const minimumDeadline = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
+const stages = [
+  { number: 1 as const, label: "Describe the work" },
+  { number: 2 as const, label: "Define success" },
+  { number: 3 as const, label: "Set terms" },
+];
+
 export function ListingWizard() {
   const router = useRouter();
+  const [stage, setStage] = useState<Stage>(1);
+  const [reviewing, setReviewing] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<(typeof JOB_CATEGORIES)[number]>("DESIGN");
@@ -40,11 +61,63 @@ export function ListingWizard() {
   const [assistantBusy, setAssistantBusy] = useState(false);
   const [error, setError] = useState("");
   const [assistantNote, setAssistantNote] = useState("");
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+
+  const skillItems = skills
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   const updateMilestone = (id: string, field: keyof ListingMilestone, value: string | number) =>
     setMilestones((items) =>
       items.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
     );
+
+  const validate = (target: Stage | "all") => {
+    if ((target === 1 || target === "all") && description.trim().length < 40)
+      return "Describe the work and expected outcome in at least 40 characters.";
+    if ((target === 1 || target === "all") && title.trim().length < 5)
+      return "Add a clear job title with at least 5 characters.";
+    if ((target === 1 || target === "all") && skillItems.length === 0)
+      return "Add at least one skill.";
+    if (target === 2 || target === "all") {
+      const incomplete = milestones.find(
+        (item) =>
+          item.title.trim().length < 2 ||
+          item.deliverable.trim().length < 10 ||
+          item.acceptanceCriteria.trim().length < 5 ||
+          item.evidenceRequirements.trim().length < 5,
+      );
+      if (incomplete)
+        return "Complete every milestone title, deliverable, success condition, and proof requirement.";
+      if (
+        milestones.some(
+          (item, index) => index > 0 && item.deliveryDays <= milestones[index - 1].deliveryDays,
+        )
+      )
+        return "Milestone timing must increase from one milestone to the next.";
+    }
+    if (target === 3 || target === "all") {
+      if (!budgetMin || Number(budgetMin) <= 0 || !budgetMax || Number(budgetMax) <= 0)
+        return "Add a positive minimum and maximum budget.";
+      if (Number(budgetMax) < Number(budgetMin))
+        return "Maximum budget must be at least the minimum budget.";
+      if (!proposalDeadline || proposalDeadline < minimumDeadline)
+        return "Choose a proposal deadline that is at least one day from now.";
+    }
+    return "";
+  };
+
+  const continueTo = (next: Stage) => {
+    const message = validate(stage);
+    if (message) {
+      setError(message);
+      return;
+    }
+    setError("");
+    setStage(next);
+  };
 
   const assist = async () => {
     if (description.trim().length < 20) {
@@ -54,14 +127,14 @@ export function ListingWizard() {
     setAssistantBusy(true);
     setError("");
     setAssistantNote("");
-    const response = await fetch("/api/ai/job-builder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description }),
-    });
-    const body = await response.json();
-    if (!response.ok) setError(body.error?.message ?? "Job assistance is unavailable.");
-    else {
+    try {
+      const response = await fetch("/api/ai/job-builder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message ?? "Job assistance is unavailable.");
       setTitle(body.data.title);
       setDescription(body.data.scope);
       setCategory(body.data.category);
@@ -73,56 +146,98 @@ export function ListingWizard() {
         })),
       );
       setAssistantNote(
-        `${body.data.estimatedStructure} Review and edit all generated details before publishing.`,
+        `Draft generated - ${body.data.estimatedStructure}. Review the suggested scope and milestones before publishing.`,
       );
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Job assistance is unavailable.");
+    } finally {
+      setAssistantBusy(false);
     }
-    setAssistantBusy(false);
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const openReview = () => {
+    const message = validate("all");
+    if (message) {
+      setError(message);
+      return;
+    }
+    setError("");
+    setReviewing(true);
+  };
+
+  const editDraft = async () => {
+    if (!draftId) {
+      setReviewing(false);
+      setStage(1);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/marketplace/listings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          category,
-          skills: skills
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean),
-          budgetMin: units(budgetMin),
-          budgetMax: units(budgetMax),
-          proposalDeadline: new Date(`${proposalDeadline}T23:59:59`).toISOString(),
-          milestones: milestones.map((milestone) => ({
-            title: milestone.title,
-            deliverable: milestone.deliverable,
-            acceptanceCriteria: milestone.acceptanceCriteria,
-            evidenceRequirements: milestone.evidenceRequirements,
-            deliveryDays: milestone.deliveryDays,
-          })),
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error?.message ?? "Listing could not be created.");
-      const publish = await fetch(`/api/marketplace/listings/${body.data.id}/publish`, {
+      const response = await fetch(`/api/marketplace/listings/${draftId}/cancel`, {
         method: "POST",
       });
-      if (!publish.ok) {
-        const publishBody = await publish.json();
-        throw new Error(publishBody.error?.message ?? "Listing could not be published.");
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error?.message ?? "The draft could not be reopened for editing.");
       }
-      router.push(`/discover/${body.data.id}`);
+      setDraftId(null);
+      setIdempotencyKey(crypto.randomUUID());
+      setReviewing(false);
+      setStage(1);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "The draft could not be reopened for editing.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const publish = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      let listingId = draftId;
+      if (!listingId) {
+        const response = await fetch("/api/marketplace/listings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+          body: JSON.stringify({
+            title,
+            description,
+            category,
+            skills: skillItems,
+            budgetMin: units(budgetMin),
+            budgetMax: units(budgetMax),
+            proposalDeadline: new Date(`${proposalDeadline}T23:59:59`).toISOString(),
+            milestones: milestones.map((milestone) => ({
+              title: milestone.title,
+              deliverable: milestone.deliverable,
+              acceptanceCriteria: milestone.acceptanceCriteria,
+              evidenceRequirements: milestone.evidenceRequirements,
+              deliveryDays: milestone.deliveryDays,
+            })),
+          }),
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error?.message ?? "The draft could not be created.");
+        listingId = body.data.id;
+        setDraftId(listingId);
+      }
+      const response = await fetch(`/api/marketplace/listings/${listingId}/publish`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(
+          body.error?.message ?? "The job could not be published. Your draft is saved; try again.",
+        );
+      }
+      router.push(`/discover/${listingId}`);
       router.refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Listing could not be created.");
+      setError(reason instanceof Error ? reason.message : "The job could not be published.");
     } finally {
       setBusy(false);
     }
@@ -136,234 +251,398 @@ export function ListingWizard() {
         </Link>
         <div>
           <p className="eyebrow">Public marketplace</p>
-          <h1>Post a public job</h1>
+          <h1>{reviewing ? "Review your job" : "Post a public job"}</h1>
           <p>
-            Define reviewable outcomes, required proof, budget, and timing before comparing
-            proposals.
+            {reviewing
+              ? "Confirm the complete listing before it becomes visible in the marketplace."
+              : "Define the work, make success verifiable, then set the commercial terms."}
           </p>
         </div>
       </div>
-      <form className="form-panel listing-form" onSubmit={submit}>
-        <div className="form-title listing-form-title">
-          <span>
-            <BriefcaseBusiness size={19} />
-          </span>
-          <div>
-            <h2>Listing details</h2>
-            <p>This information will be visible publicly.</p>
-          </div>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={assist}
-            disabled={assistantBusy}
+
+      <ol className="listing-steps" aria-label="Job creation progress">
+        {stages.map((item) => (
+          <li
+            className={`${stage === item.number && !reviewing ? "active" : ""} ${stage > item.number || reviewing ? "complete" : ""}`}
+            key={item.number}
           >
-            <Sparkles size={15} /> {assistantBusy ? "Preparing..." : "Build from description"}
-          </button>
-        </div>
-        <div className="assistant-start">
-          <label>
-            Scope and expected outcome
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              required
-              minLength={40}
-              maxLength={5000}
-              rows={7}
-              placeholder="Describe the work, expected outcome, important constraints, and what success should look like."
-            />
-          </label>
-          <small>
-            Use the assistant after adding a rough description, or complete every field manually.
-          </small>
-        </div>
-        {assistantNote && (
-          <div className="assistant-note">
-            <Sparkles size={15} />
-            <p>{assistantNote}</p>
-          </div>
-        )}
-        <label>
-          Job title
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-            minLength={5}
-            maxLength={90}
-          />
-        </label>
-        <div className="two-fields">
-          <label>
-            Category
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value as typeof category)}
-            >
-              {JOB_CATEGORIES.map((item) => (
-                <option value={item} key={item}>
-                  {item.toLowerCase()}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Skills
-            <input
-              value={skills}
-              onChange={(event) => setSkills(event.target.value)}
-              required
-              placeholder="React, product design, research"
-            />
-          </label>
-        </div>
-        <div className="listing-milestones-heading">
+            <span>{stage > item.number || reviewing ? <Check size={15} /> : item.number}</span>
+            <div>
+              <small>Step {item.number}</small>
+              <strong>{item.label}</strong>
+            </div>
+          </li>
+        ))}
+        <li className={reviewing ? "active" : ""}>
+          <span>{reviewing ? 4 : <CheckCircle2 size={15} />}</span>
           <div>
-            <h2>Verifiable milestone expectations</h2>
-            <p>
-              Describe what is delivered, how it is accepted, and which proof must be submitted.
-            </p>
+            <small>Final check</small>
+            <strong>Review</strong>
           </div>
-        </div>
-        <div className="listing-milestone-editors">
-          {milestones.map((milestone, index) => (
-            <fieldset key={milestone.id}>
-              <legend>Milestone {index + 1}</legend>
-              {milestones.length > 1 && (
-                <button
-                  type="button"
-                  className="icon-button danger"
-                  onClick={() =>
-                    setMilestones((items) => items.filter((item) => item.id !== milestone.id))
-                  }
-                  aria-label={`Remove milestone ${index + 1}`}
-                  title="Remove milestone"
-                >
-                  <Trash2 size={15} />
-                </button>
+        </li>
+      </ol>
+
+      {reviewing ? (
+        <section className="listing-review" aria-live="polite">
+          {assistantNote && (
+            <div className="assistant-note">
+              <Sparkles size={15} />
+              <p>{assistantNote}</p>
+            </div>
+          )}
+          <section>
+            <span>Work</span>
+            <h2>{title}</h2>
+            <p>{description}</p>
+            <dl>
+              <div>
+                <dt>Category</dt>
+                <dd>{category.toLowerCase()}</dd>
+              </div>
+              <div>
+                <dt>Skills</dt>
+                <dd>{skillItems.join(", ")}</dd>
+              </div>
+            </dl>
+          </section>
+          <section>
+            <span>Milestone structure</span>
+            <ol className="listing-review-milestones">
+              {milestones.map((milestone, index) => (
+                <li key={milestone.id}>
+                  <b>{index + 1}</b>
+                  <div>
+                    <h3>{milestone.title}</h3>
+                    <p>
+                      <strong>What will be delivered?</strong>
+                      {milestone.deliverable}
+                    </p>
+                    <p>
+                      <strong>How will success be confirmed?</strong>
+                      {milestone.acceptanceCriteria}
+                    </p>
+                    <p>
+                      <strong>What proof should be provided?</strong>
+                      {milestone.evidenceRequirements}
+                    </p>
+                  </div>
+                  <time>Day {milestone.deliveryDays}</time>
+                </li>
+              ))}
+            </ol>
+          </section>
+          <section>
+            <span>Terms</span>
+            <dl className="listing-review-terms">
+              <div>
+                <dt>Minimum budget</dt>
+                <dd>{budgetMin} CKB</dd>
+              </div>
+              <div>
+                <dt>Maximum budget</dt>
+                <dd>{budgetMax} CKB</dd>
+              </div>
+              <div>
+                <dt>Proposal deadline</dt>
+                <dd>{new Date(`${proposalDeadline}T12:00:00`).toLocaleDateString()}</dd>
+              </div>
+              <div>
+                <dt>Expected timing</dt>
+                <dd>{milestones.at(-1)?.deliveryDays} days</dd>
+              </div>
+            </dl>
+          </section>
+          {error && (
+            <p className="form-feedback error" role="alert">
+              {error}
+            </p>
+          )}
+          {draftId && (
+            <p className="form-feedback success">Your draft is saved. Publish again to retry.</p>
+          )}
+          <div className="wizard-actions">
+            <button type="button" className="secondary-button" onClick={editDraft} disabled={busy}>
+              <Pencil size={16} /> Edit job
+            </button>
+            <button type="button" className="primary-button" onClick={publish} disabled={busy}>
+              <Send size={16} />{" "}
+              {busy ? (draftId ? "Publishing..." : "Creating draft...") : "Publish job"}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <form className="form-panel listing-form" onSubmit={(event) => event.preventDefault()}>
+          <div className="form-title listing-form-title">
+            <span>
+              <BriefcaseBusiness size={19} />
+            </span>
+            <div>
+              <h2>{stages[stage - 1].label}</h2>
+              <p>Step {stage} of 3</p>
+            </div>
+          </div>
+
+          {stage === 1 && (
+            <div className="listing-stage">
+              <div className="assistant-start">
+                <label>
+                  Scope and expected outcome
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    minLength={40}
+                    maxLength={5000}
+                    rows={7}
+                    placeholder="Describe the work, expected outcome, important constraints, and what success should look like."
+                  />
+                </label>
+                <div className="assistant-row">
+                  <small>Start with a rough brief or complete every field manually.</small>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={assist}
+                    disabled={assistantBusy}
+                  >
+                    <Sparkles size={15} />{" "}
+                    {assistantBusy ? "Preparing..." : "Build from description"}
+                  </button>
+                </div>
+              </div>
+              {assistantNote && (
+                <div className="assistant-note">
+                  <Sparkles size={15} />
+                  <p>{assistantNote}</p>
+                </div>
               )}
+              <label>
+                Job title
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  minLength={5}
+                  maxLength={90}
+                />
+              </label>
               <div className="two-fields">
                 <label>
-                  Title
+                  Category
+                  <select
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value as typeof category)}
+                  >
+                    {JOB_CATEGORIES.map((item) => (
+                      <option value={item} key={item}>
+                        {item.toLowerCase()}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Skills
                   <input
-                    value={milestone.title}
-                    onChange={(event) => updateMilestone(milestone.id, "title", event.target.value)}
-                    required
+                    value={skills}
+                    onChange={(event) => setSkills(event.target.value)}
+                    placeholder="React, product design, research"
+                  />
+                  <small>Separate skills with commas.</small>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {stage === 2 && (
+            <div className="listing-stage">
+              <div className="listing-milestones-heading">
+                <h2>Verifiable milestone expectations</h2>
+                <p>Make each outcome and approval decision clear to both sides.</p>
+              </div>
+              <div className="listing-milestone-editors">
+                {milestones.map((milestone, index) => (
+                  <fieldset key={milestone.id}>
+                    <legend>Milestone {index + 1}</legend>
+                    {milestones.length > 1 && (
+                      <button
+                        type="button"
+                        className="icon-button danger"
+                        onClick={() =>
+                          setMilestones((items) => items.filter((item) => item.id !== milestone.id))
+                        }
+                        aria-label={`Remove milestone ${index + 1}`}
+                        title="Remove milestone"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                    <div className="two-fields">
+                      <label>
+                        Milestone title
+                        <input
+                          value={milestone.title}
+                          onChange={(event) =>
+                            updateMilestone(milestone.id, "title", event.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        Delivery time
+                        <div className="duration-input">
+                          <input
+                            type="number"
+                            min={index ? milestones[index - 1].deliveryDays + 1 : 1}
+                            max={365}
+                            value={milestone.deliveryDays}
+                            onChange={(event) =>
+                              updateMilestone(
+                                milestone.id,
+                                "deliveryDays",
+                                Number(event.target.value),
+                              )
+                            }
+                          />
+                          <span>days</span>
+                        </div>
+                      </label>
+                    </div>
+                    <label>
+                      What will be delivered?
+                      <textarea
+                        rows={3}
+                        value={milestone.deliverable}
+                        onChange={(event) =>
+                          updateMilestone(milestone.id, "deliverable", event.target.value)
+                        }
+                        placeholder="Describe the concrete outcome the professional should provide."
+                      />
+                      <small>Formal term: deliverable</small>
+                    </label>
+                    <label>
+                      How will success be confirmed?
+                      <textarea
+                        rows={3}
+                        value={milestone.acceptanceCriteria}
+                        onChange={(event) =>
+                          updateMilestone(milestone.id, "acceptanceCriteria", event.target.value)
+                        }
+                        placeholder="State the objective conditions used to approve this milestone."
+                      />
+                      <small>Formal term: acceptance criteria</small>
+                    </label>
+                    <label>
+                      What proof should be provided?
+                      <input
+                        value={milestone.evidenceRequirements}
+                        onChange={(event) =>
+                          updateMilestone(milestone.id, "evidenceRequirements", event.target.value)
+                        }
+                        placeholder="Working URL, source commit, report, or completion recording"
+                      />
+                      <small>Formal term: required proof</small>
+                    </label>
+                  </fieldset>
+                ))}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={milestones.length >= 10}
+                  onClick={() =>
+                    setMilestones((items) => [
+                      ...items,
+                      blankMilestone((items.at(-1)?.deliveryDays ?? 0) + 7),
+                    ])
+                  }
+                >
+                  <Plus size={15} /> Add milestone <span>{milestones.length}/10</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {stage === 3 && (
+            <div className="listing-stage">
+              <div className="listing-terms-intro">
+                <h3>Set a realistic range and response window</h3>
+                <p>Professionals will propose milestone amounts within these terms.</p>
+              </div>
+              <div className="three-fields listing-commercial-fields">
+                <label>
+                  Minimum budget (CKB)
+                  <input
+                    value={budgetMin}
+                    onChange={(event) => setBudgetMin(event.target.value)}
+                    type="number"
+                    min="0.00000001"
+                    step="0.00000001"
                   />
                 </label>
                 <label>
-                  Expected timing
-                  <div className="duration-input">
-                    <input
-                      type="number"
-                      min={index ? milestones[index - 1].deliveryDays + 1 : 1}
-                      max={365}
-                      value={milestone.deliveryDays}
-                      onChange={(event) =>
-                        updateMilestone(milestone.id, "deliveryDays", Number(event.target.value))
-                      }
-                      required
-                    />
-                    <span>days</span>
-                  </div>
+                  Maximum budget (CKB)
+                  <input
+                    value={budgetMax}
+                    onChange={(event) => setBudgetMax(event.target.value)}
+                    type="number"
+                    min="0.00000001"
+                    step="0.00000001"
+                  />
+                </label>
+                <label>
+                  Proposal deadline
+                  <input
+                    value={proposalDeadline}
+                    onChange={(event) => setProposalDeadline(event.target.value)}
+                    type="date"
+                    min={minimumDeadline}
+                  />
                 </label>
               </div>
-              <label>
-                Deliverable
-                <textarea
-                  rows={3}
-                  value={milestone.deliverable}
-                  onChange={(event) =>
-                    updateMilestone(milestone.id, "deliverable", event.target.value)
-                  }
-                  placeholder="What must be delivered?"
-                  required
-                />
-              </label>
-              <label>
-                Acceptance criteria
-                <textarea
-                  rows={3}
-                  value={milestone.acceptanceCriteria}
-                  onChange={(event) =>
-                    updateMilestone(milestone.id, "acceptanceCriteria", event.target.value)
-                  }
-                  placeholder="What objective conditions count as successful completion?"
-                  required
-                />
-              </label>
-              <label>
-                Required proof
-                <input
-                  value={milestone.evidenceRequirements}
-                  onChange={(event) =>
-                    updateMilestone(milestone.id, "evidenceRequirements", event.target.value)
-                  }
-                  placeholder="Working URL, source commit, report, or completion recording"
-                  required
-                />
-              </label>
-            </fieldset>
-          ))}
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={milestones.length >= 10}
-            onClick={() =>
-              setMilestones((items) => [
-                ...items,
-                blankMilestone((items.at(-1)?.deliveryDays ?? 0) + 7),
-              ])
-            }
-          >
-            <Plus size={15} /> Add milestone <span>{milestones.length}/10</span>
-          </button>
-        </div>
-        <div className="three-fields listing-commercial-fields">
-          <label>
-            Minimum budget (CKB)
-            <input
-              value={budgetMin}
-              onChange={(event) => setBudgetMin(event.target.value)}
-              required
-              type="number"
-              min="0.00000001"
-              step="0.00000001"
-            />
-          </label>
-          <label>
-            Maximum budget (CKB)
-            <input
-              value={budgetMax}
-              onChange={(event) => setBudgetMax(event.target.value)}
-              required
-              type="number"
-              min="0.00000001"
-              step="0.00000001"
-            />
-          </label>
-          <label>
-            Proposal deadline
-            <input
-              value={proposalDeadline}
-              onChange={(event) => setProposalDeadline(event.target.value)}
-              required
-              type="date"
-              min={minimumDeadline}
-            />
-          </label>
-        </div>
-        {error && <p className="form-feedback error">{error}</p>}
-        <div className="wizard-actions">
-          <Link className="secondary-button" href="/jobs/new">
-            Cancel
-          </Link>
-          <button className="primary-button" disabled={busy}>
-            <Send size={16} /> {busy ? "Publishing..." : "Review and publish"}
-          </button>
-        </div>
-      </form>
+              <div className="terms-summary">
+                <CheckCircle2 size={18} />
+                <div>
+                  <strong>Review before publishing</strong>
+                  <p>Your job remains private until you confirm it on the next screen.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <p className="form-feedback error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="wizard-actions">
+            {stage === 1 ? (
+              <Link className="secondary-button" href="/jobs/new">
+                Cancel
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setError("");
+                  setStage((stage - 1) as Stage);
+                }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+            )}
+            {stage < 3 ? (
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => continueTo((stage + 1) as Stage)}
+              >
+                Continue <ArrowRight size={16} />
+              </button>
+            ) : (
+              <button type="button" className="primary-button" onClick={openReview}>
+                Review job <CheckCircle2 size={16} />
+              </button>
+            )}
+          </div>
+        </form>
+      )}
     </div>
   );
 }

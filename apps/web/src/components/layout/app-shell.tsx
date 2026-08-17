@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/ui/logout-button";
 
 const primary = [
@@ -40,6 +40,32 @@ const secondary = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [account, setAccount] = useState<{ displayName: string; email: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/auth/me")
+      .then((response) => response.json())
+      .then((body) => {
+        if (active && body.data)
+          setAccount({
+            displayName: body.data.profile?.displayName || body.data.user.email.split("@")[0],
+            email: body.data.user.email,
+          });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const initials =
+    account?.displayName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "VR";
 
   const nav = (items: typeof primary) =>
     items.map(({ label, href, icon: Icon }) => {
@@ -88,15 +114,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="network-card">
           <div>
-            <span className="status-dot" /> CKB Mainnet
+            <span className="status-dot" /> Systems operational
           </div>
-          <p>PactAgent services operational</p>
+          <p>CKB Mainnet · PactAgent</p>
         </div>
         <div className="sidebar-user">
-          <span className="avatar">AO</span>
+          <span className="avatar">{initials}</span>
           <span>
-            <strong>Alex Okafor</strong>
-            <small>alex@example.com</small>
+            <strong>{account?.displayName || "Veyrivo account"}</strong>
+            <small>{account?.email || "Signed in"}</small>
           </span>
           <span className="sidebar-user-actions">
             <Link href="/wallet" aria-label="Open account settings" title="Settings">
@@ -132,15 +158,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
           <div className="topbar-actions">
-            <span className="network-pill">
-              <span className="status-dot" /> CKB
-            </span>
             <Link className="icon-button" href="/notifications" aria-label="Notifications">
               <Bell size={19} />
               <span className="notification-dot" />
             </Link>
             <Link className="top-avatar" href="/profile" aria-label="Open profile">
-              AO
+              {initials}
             </Link>
           </div>
         </header>

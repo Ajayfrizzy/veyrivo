@@ -2,6 +2,8 @@
 
 import { JOB_CATEGORIES } from "@veyrivo/domain";
 import {
+  Check,
+  Circle,
   ExternalLink,
   Eye,
   EyeOff,
@@ -62,6 +64,36 @@ const emptyPortfolio = {
   projectRole: "",
 };
 
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+const countries = Array.from({ length: 26 * 26 }, (_, index) => {
+  const code = `${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(65 + (index % 26))}`;
+  const name = regionNames.of(code);
+  return name && name !== code ? ([code, name] as const) : null;
+})
+  .filter((item): item is readonly [string, string] => Boolean(item))
+  .sort((left, right) => left[1].localeCompare(right[1]));
+
+const commonTimezones = [
+  "Africa/Accra",
+  "Africa/Cairo",
+  "Africa/Johannesburg",
+  "Africa/Lagos",
+  "Africa/Nairobi",
+  "America/Chicago",
+  "America/Los_Angeles",
+  "America/New_York",
+  "America/Sao_Paulo",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Australia/Sydney",
+  "Europe/Berlin",
+  "Europe/Lisbon",
+  "Europe/London",
+  "Europe/Paris",
+  "UTC",
+];
+
 export function ProfileEditor({
   initialProfile,
   initialPortfolio,
@@ -83,6 +115,17 @@ export function ProfileEditor({
   const [feedbackIsError, setFeedbackIsError] = useState(false);
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
+  const readiness = [
+    { label: "Display name", complete: Boolean(profile.displayName.trim()) },
+    {
+      label: "Professional headline or primary role",
+      complete: Boolean(profile.headline?.trim() || profile.primaryRole?.trim()),
+    },
+    { label: "Bio", complete: Boolean(profile.bio?.trim()) },
+    { label: "At least one skill", complete: profile.skills.some((skill) => skill.trim()) },
+  ];
+  const readyCount = readiness.filter((item) => item.complete).length;
+  const profileReady = readyCount === readiness.length;
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -230,6 +273,10 @@ export function ProfileEditor({
         )}
         {editing ? (
           <form className="profile-edit-form" onSubmit={saveProfile}>
+            <div className="profile-form-section-heading">
+              <h3>Professional identity</h3>
+              <p>How clients will understand your focus and value.</p>
+            </div>
             <div className="two-fields">
               <label>
                 Display name
@@ -267,6 +314,10 @@ export function ProfileEditor({
                 required
               />
             </label>
+            <div className="profile-form-section-heading">
+              <h3>Expertise</h3>
+              <p>Help clients match your experience to their work.</p>
+            </div>
             <div className="two-fields">
               <label>
                 Skills
@@ -284,6 +335,30 @@ export function ProfileEditor({
                   placeholder="English, French"
                 />
               </label>
+            </div>
+            <fieldset className="category-checks">
+              <legend>Preferred work categories</legend>
+              {JOB_CATEGORIES.map((category) => (
+                <label key={category}>
+                  <input
+                    type="checkbox"
+                    checked={profile.preferredWorkCategories.includes(category)}
+                    onChange={(event) =>
+                      set(
+                        "preferredWorkCategories",
+                        event.target.checked
+                          ? [...profile.preferredWorkCategories, category]
+                          : profile.preferredWorkCategories.filter((item) => item !== category),
+                      )
+                    }
+                  />
+                  {category.toLowerCase()}
+                </label>
+              ))}
+            </fieldset>
+            <div className="profile-form-section-heading">
+              <h3>Availability and location</h3>
+              <p>Set expectations for collaboration and working hours.</p>
             </div>
             <div className="three-fields">
               <label>
@@ -325,43 +400,44 @@ export function ProfileEditor({
             </div>
             <div className="two-fields">
               <label>
-                Country code
-                <input
+                Country
+                <select
                   value={profile.countryCode ?? ""}
-                  onChange={(event) => set("countryCode", event.target.value.toUpperCase())}
-                  maxLength={2}
+                  onChange={(event) => set("countryCode", event.target.value)}
                   required
-                />
+                >
+                  <option value="">Select a country</option>
+                  {profile.countryCode &&
+                    !countries.some(([code]) => code === profile.countryCode) && (
+                      <option value={profile.countryCode}>{profile.countryCode}</option>
+                    )}
+                  {countries.map(([code, name]) => (
+                    <option value={code} key={code}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Timezone
                 <input
+                  list="veyrivo-timezones"
                   value={profile.timezone}
                   onChange={(event) => set("timezone", event.target.value)}
+                  placeholder="Africa/Lagos"
                   required
                 />
+                <datalist id="veyrivo-timezones">
+                  {commonTimezones.map((timezone) => (
+                    <option value={timezone} key={timezone} />
+                  ))}
+                </datalist>
               </label>
             </div>
-            <fieldset className="category-checks">
-              <legend>Preferred work categories</legend>
-              {JOB_CATEGORIES.map((category) => (
-                <label key={category}>
-                  <input
-                    type="checkbox"
-                    checked={profile.preferredWorkCategories.includes(category)}
-                    onChange={(event) =>
-                      set(
-                        "preferredWorkCategories",
-                        event.target.checked
-                          ? [...profile.preferredWorkCategories, category]
-                          : profile.preferredWorkCategories.filter((item) => item !== category),
-                      )
-                    }
-                  />
-                  {category.toLowerCase()}
-                </label>
-              ))}
-            </fieldset>
+            <div className="profile-form-section-heading">
+              <h3>Online presence</h3>
+              <p>Add links that help clients verify your work.</p>
+            </div>
             <div className="three-fields">
               <label>
                 GitHub URL
@@ -429,6 +505,40 @@ export function ProfileEditor({
         )}
       </section>
 
+      {!profile.isPublic && (
+        <section className="profile-readiness" aria-labelledby="profile-readiness-title">
+          <div className="readiness-summary">
+            <div>
+              <p className="eyebrow">Before publishing</p>
+              <h2 id="profile-readiness-title">Profile readiness</h2>
+              <p>
+                {readyCount} of {readiness.length} required details complete
+              </p>
+            </div>
+            <strong>{Math.round((readyCount / readiness.length) * 100)}%</strong>
+          </div>
+          <div
+            className="readiness-progress"
+            role="progressbar"
+            aria-label="Profile readiness"
+            aria-valuemin={0}
+            aria-valuemax={readiness.length}
+            aria-valuenow={readyCount}
+          >
+            <span style={{ width: `${(readyCount / readiness.length) * 100}%` }} />
+          </div>
+          <ul>
+            {readiness.map((item) => (
+              <li className={item.complete ? "complete" : ""} key={item.label}>
+                {item.complete ? <Check size={15} /> : <Circle size={15} />}
+                <span>{item.label}</span>
+                <small>{item.complete ? "Complete" : "Missing"}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="panel profile-visibility">
         <div>
           <span className={`visibility-icon ${profile.isPublic ? "public" : ""}`}>
@@ -448,11 +558,17 @@ export function ProfileEditor({
           type="button"
           className={profile.isPublic ? "secondary-button" : "primary-button"}
           onClick={updateVisibility}
-          disabled={busy}
+          disabled={busy || (!profile.isPublic && !profileReady)}
+          aria-describedby={!profile.isPublic && !profileReady ? "publish-guidance" : undefined}
         >
           {profile.isPublic ? <EyeOff size={16} /> : <Eye size={16} />}
           {profile.isPublic ? "Make profile private" : "Publish profile"}
         </button>
+        {!profile.isPublic && !profileReady && (
+          <span className="sr-only" id="publish-guidance">
+            Complete all required profile details before publishing.
+          </span>
+        )}
       </section>
 
       <section className="panel portfolio-manager">
@@ -601,9 +717,12 @@ export function ProfileEditor({
               </article>
             ))
           ) : (
-            <div className="market-empty compact-empty">
+            <div className="market-empty compact-empty portfolio-empty">
               <h3>No portfolio projects yet</h3>
-              <p>Add work samples that help clients evaluate relevant experience.</p>
+              <p>Add one strong project to help clients understand the kind of work you do.</p>
+              <button className="secondary-button" onClick={() => setShowPortfolioForm(true)}>
+                <Plus size={15} /> Add project
+              </button>
             </div>
           )}
         </div>
