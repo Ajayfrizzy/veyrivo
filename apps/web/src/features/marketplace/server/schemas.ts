@@ -34,6 +34,7 @@ export const listingInputSchema = listingFieldsSchema
   });
 
 export const listingUpdateSchema = listingFieldsSchema
+  .extend({ milestones: z.array(listingMilestoneSchema).min(1).max(10) })
   .partial()
   .refine(
     (value) =>

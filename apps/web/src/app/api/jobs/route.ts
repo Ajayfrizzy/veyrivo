@@ -1,7 +1,7 @@
 import { and, desc, eq, gt, or } from "drizzle-orm";
 import { randomInt } from "node:crypto";
 import { db } from "@/server/db";
-import { feeQuotes, jobs, milestones, operations, users } from "@/server/db/schema";
+import { feeQuotes, jobs, milestones, operations, profiles, users } from "@/server/db/schema";
 import { requireUser } from "@/server/auth/session";
 import { ApiError, withApi } from "@/server/http/errors";
 import { assertSameOrigin } from "@/server/http/security";
@@ -55,11 +55,27 @@ export const POST = withApi(async (request: Request) => {
       "FEE_QUOTE_INVALID",
       "Create a new fee quote for the exact milestone subtotal.",
     );
-  const [worker] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, input.workerEmail))
-    .limit(1);
+  const [worker] = input.workerUserId
+    ? await db
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .innerJoin(profiles, eq(profiles.userId, users.id))
+        .where(
+          and(
+            eq(users.id, input.workerUserId),
+            eq(users.status, "ACTIVE"),
+            eq(profiles.isPublic, true),
+            or(eq(profiles.availability, "AVAILABLE"), eq(profiles.availability, "LIMITED")),
+          ),
+        )
+        .limit(1)
+    : await db
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .where(eq(users.email, input.workerEmail!))
+        .limit(1);
+  if (input.workerUserId && !worker)
+    throw new ApiError(404, "TALENT_NOT_FOUND", "The selected professional is unavailable.");
   if (worker?.id === user.id)
     throw new ApiError(
       400,
@@ -74,7 +90,7 @@ export const POST = withApi(async (request: Request) => {
         reference,
         clientUserId: user.id,
         workerUserId: worker?.id,
-        workerEmail: input.workerEmail,
+        workerEmail: worker?.email ?? input.workerEmail!,
         title: input.title,
         description: input.description,
         asset: input.asset,

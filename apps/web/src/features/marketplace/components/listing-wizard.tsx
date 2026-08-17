@@ -62,7 +62,8 @@ export function ListingWizard() {
   const [error, setError] = useState("");
   const [assistantNote, setAssistantNote] = useState("");
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [draftNeedsUpdate, setDraftNeedsUpdate] = useState(false);
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const skillItems = skills
     .split(",")
@@ -165,33 +166,11 @@ export function ListingWizard() {
     setReviewing(true);
   };
 
-  const editDraft = async () => {
-    if (!draftId) {
-      setReviewing(false);
-      setStage(1);
-      return;
-    }
-    setBusy(true);
+  const editDraft = () => {
     setError("");
-    try {
-      const response = await fetch(`/api/marketplace/listings/${draftId}/cancel`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "The draft could not be reopened for editing.");
-      }
-      setDraftId(null);
-      setIdempotencyKey(crypto.randomUUID());
-      setReviewing(false);
-      setStage(1);
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "The draft could not be reopened for editing.",
-      );
-    } finally {
-      setBusy(false);
-    }
+    if (draftId) setDraftNeedsUpdate(true);
+    setReviewing(false);
+    setStage(1);
   };
 
   const publish = async () => {
@@ -199,31 +178,43 @@ export function ListingWizard() {
     setError("");
     try {
       let listingId = draftId;
+      const payload = {
+        title,
+        description,
+        category,
+        skills: skillItems,
+        budgetMin: units(budgetMin),
+        budgetMax: units(budgetMax),
+        proposalDeadline: new Date(`${proposalDeadline}T23:59:59`).toISOString(),
+        milestones: milestones.map(
+          ({ title, deliverable, acceptanceCriteria, evidenceRequirements, deliveryDays }) => ({
+            title,
+            deliverable,
+            acceptanceCriteria,
+            evidenceRequirements,
+            deliveryDays,
+          }),
+        ),
+      };
       if (!listingId) {
         const response = await fetch("/api/marketplace/listings", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-          body: JSON.stringify({
-            title,
-            description,
-            category,
-            skills: skillItems,
-            budgetMin: units(budgetMin),
-            budgetMax: units(budgetMax),
-            proposalDeadline: new Date(`${proposalDeadline}T23:59:59`).toISOString(),
-            milestones: milestones.map((milestone) => ({
-              title: milestone.title,
-              deliverable: milestone.deliverable,
-              acceptanceCriteria: milestone.acceptanceCriteria,
-              evidenceRequirements: milestone.evidenceRequirements,
-              deliveryDays: milestone.deliveryDays,
-            })),
-          }),
+          body: JSON.stringify(payload),
         });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error?.message ?? "The draft could not be created.");
         listingId = body.data.id;
         setDraftId(listingId);
+      } else if (draftNeedsUpdate) {
+        const response = await fetch(`/api/marketplace/listings/${listingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error?.message ?? "The draft could not be updated.");
+        setDraftNeedsUpdate(false);
       }
       const response = await fetch(`/api/marketplace/listings/${listingId}/publish`, {
         method: "POST",
@@ -358,7 +349,10 @@ export function ListingWizard() {
             </p>
           )}
           {draftId && (
-            <p className="form-feedback success">Your draft is saved. Publish again to retry.</p>
+            <p className="form-feedback success">
+              Your draft was saved, but publishing did not complete. You can retry or edit the
+              draft.
+            </p>
           )}
           <div className="wizard-actions">
             <button type="button" className="secondary-button" onClick={editDraft} disabled={busy}>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { listingInputSchema, listingQuerySchema, proposalInputSchema } from "./schemas";
+import {
+  listingInputSchema,
+  listingQuerySchema,
+  listingUpdateSchema,
+  proposalInputSchema,
+} from "./schemas";
 
 const listing = {
   title: "Build an analytics dashboard",
@@ -25,6 +30,22 @@ describe("marketplace schemas", () => {
   });
   it("rejects an inverted budget", () => {
     expect(() => listingInputSchema.parse({ ...listing, budgetMin: "300" })).toThrow();
+  });
+  it("accepts milestone structure when updating an existing draft", () => {
+    const update = listingUpdateSchema.parse({
+      title: "Updated analytics dashboard",
+      milestones: [
+        {
+          ...listing.milestones[0],
+          title: "Updated delivery",
+          deliveryDays: 21,
+        },
+      ],
+    });
+    expect(update.milestones?.[0]).toMatchObject({
+      title: "Updated delivery",
+      deliveryDays: 21,
+    });
   });
   it("treats blank discovery filters as absent", () => {
     expect(

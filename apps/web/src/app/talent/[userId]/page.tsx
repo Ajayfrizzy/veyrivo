@@ -169,7 +169,7 @@ export default async function PublicTalentProfile({
                 <p className="eyebrow">Work together</p>
                 <h2>Interested in this professional?</h2>
                 <p>Structure the work with clear milestones and protected payment.</p>
-                <Link className="primary-button" href="/jobs/new/direct">
+                <Link className="primary-button" href={`/jobs/new/direct?talent=${profile.userId}`}>
                   <Send size={16} /> Invite to a job
                 </Link>
                 <a className="secondary-button" href="#portfolio">

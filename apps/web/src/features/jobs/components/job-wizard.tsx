@@ -30,7 +30,16 @@ const emptyMilestone = (index: number): MilestoneDraft => ({
 const format = (value: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value || 0);
 
-export function JobWizard() {
+export type SelectedTalent = {
+  userId: string;
+  displayName: string;
+  headline?: string | null;
+  primaryRole?: string | null;
+  skills: string[];
+  identityVerified: boolean;
+};
+
+export function JobWizard({ selectedTalent }: { selectedTalent?: SelectedTalent }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [title, setTitle] = useState("");
@@ -74,7 +83,7 @@ export function JobWizard() {
       nextErrors.push(
         "Complete the title, deliverable, acceptance criteria, amount, due date, and required proof for every milestone.",
       );
-    if (step === 2 && !/^\S+@\S+\.\S+$/.test(worker))
+    if (step === 2 && !selectedTalent && !/^\S+@\S+\.\S+$/.test(worker))
       nextErrors.push("Enter a valid worker email address.");
     setErrors(nextErrors);
     return nextErrors.length === 0;
@@ -122,7 +131,7 @@ export function JobWizard() {
         body: JSON.stringify({
           title,
           description,
-          workerEmail: worker,
+          ...(selectedTalent ? { workerUserId: selectedTalent.userId } : { workerEmail: worker }),
           asset: "CKB",
           assetDecimals: 8,
           feeQuoteId: quoteBody.data.id,
@@ -343,15 +352,30 @@ export function JobWizard() {
                   </p>
                 </div>
               </div>
-              <label>
-                Worker email
-                <input
-                  type="email"
-                  value={worker}
-                  onChange={(event) => setWorker(event.target.value)}
-                  placeholder="worker@example.com"
-                />
-              </label>
+              {selectedTalent ? (
+                <div className="review-block">
+                  <span>Inviting</span>
+                  <strong>{selectedTalent.displayName}</strong>
+                  <p>
+                    {selectedTalent.headline ||
+                      selectedTalent.primaryRole ||
+                      "Veyrivo professional"}
+                  </p>
+                  <Link href="/talent" className="secondary-button">
+                    Change professional
+                  </Link>
+                </div>
+              ) : (
+                <label>
+                  Worker email
+                  <input
+                    type="email"
+                    value={worker}
+                    onChange={(event) => setWorker(event.target.value)}
+                    placeholder="worker@example.com"
+                  />
+                </label>
+              )}
               <div className="process-list">
                 <div>
                   <span>1</span>
@@ -402,7 +426,8 @@ export function JobWizard() {
               </div>
               <div className="review-block">
                 <span>Worker</span>
-                <strong>{worker}</strong>
+                <strong>{selectedTalent?.displayName ?? worker}</strong>
+                {selectedTalent && <p>{selectedTalent.headline || selectedTalent.primaryRole}</p>}
               </div>
               <div className="review-milestones">
                 <h3>Milestones</h3>
