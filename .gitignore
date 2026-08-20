@@ -9,4 +9,3 @@ out/
 .env.*.local
 .data/
 npm-debug.log*
-codex.md

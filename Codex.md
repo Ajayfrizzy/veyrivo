@@ -31,3 +31,6 @@ trust_level = "trusted"
 
 [projects."/Users/oluwaseun/Desktop/veyrivo"]
 trust_level = "trusted"
+
+mkdir -p .codex
+nano  .codex/config.toml
